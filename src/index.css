@@ -104,3 +104,35 @@
   border-color: #343a40; /* Dark border for consistency */
 }
 
+
+.calendar-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center; /* Centers the calendar */
+}
+
+.react-calendar {
+  width: 100% !important; /* Ensure it takes full width */
+  max-width: none; /* Remove any max-width restrictions */
+}
+
+.react-calendar__tile--active {
+  background: #20c997;
+  color: white;
+}
+
+.react-calendar__tile--now {
+  background: #ff5733;
+  color: white;
+}
+.react-calendar__tile--active {
+  background-color: #20c997; /* Background color for active date */
+  color: white;
+  border: 2px solid #007bff; /* Border color */
+}
+
+.react-calendar__tile--hover {
+  border: 2px solid #007bff; /* Border color on hover */
+}
+

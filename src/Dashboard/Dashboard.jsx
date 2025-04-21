@@ -231,21 +231,20 @@ const Dashboard = ({ handleAskButton }) => {
           </Row>
         </Card.Body>
       </Card>
+      <Card className="mb-3">
+        <Card.Header className="fw-semibold text-primary d-flex justify-content-between">Borrowing Frequency
+          <Button variant='primary' size='sm' className='rounded-pill'
+            onClick={() => handleAskButton(`Explain this data: ${formatBorrowingFrequencyText(borrowings, 'day')}`)}><ChatSquareQuoteFill size={14} /></Button>
+        </Card.Header>
+        <Card.Body>
+          <Charts type="borrowingFrequency" data={borrowings} />
+        </Card.Body>
+      </Card>
       {/* Summary and Inventory/Events */}
       <Row className="mb-4">
         <Col md={6}>
           <Row className="mb-4">
             <Col>
-              <Card className="mb-3">
-                <Card.Header className="fw-semibold text-primary d-flex justify-content-between">Borrowing Frequency
-                  <Button variant='primary' size='sm' className='rounded-pill'
-                    onClick={() => handleAskButton(`Explain this data: ${formatBorrowingFrequencyText(borrowings, 'day')}`)}><ChatSquareQuoteFill size={14} /></Button>
-                </Card.Header>
-                <Card.Body>
-                  <Charts type="borrowingFrequency" data={borrowings} />
-                </Card.Body>
-              </Card>
-
               <Card className="mb-3">
                 <Card.Header className="fw-semibold text-primary d-flex justify-content-between">
                   Inventory Status
@@ -543,8 +542,8 @@ const Dashboard = ({ handleAskButton }) => {
                   <td>
                     <span
                       className={`badge bg-${b.status === 'Returned' ? 'success'
-                          : b.status === 'Approved' ? 'primary'
-                            : 'warning'
+                        : b.status === 'Approved' ? 'primary'
+                          : 'warning'
                         } text-white`}
                     >
                       {b.status}
