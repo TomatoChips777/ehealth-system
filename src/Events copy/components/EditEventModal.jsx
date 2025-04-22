@@ -6,114 +6,40 @@ import FormatDate from '../../extra/DateFormat';
 import { useAuth } from '../../../AuthContext';
 
 const EditEventModal = ({ show, event, onClose, onUpdate }) => {
-    const { user } = useAuth();
+    const {user} = useAuth();
     const [eventName, setEventName] = useState('');
     const [startDate, setStartDate] = useState('');
-    const [startTime, setStartTime] = useState({ hour: '12', minute: '00', ampm: 'AM' });
+    const [startTime, setStartTime] = useState('');
     const [endDate, setEndDate] = useState('');
-    const [endTime, setEndTime] = useState({ hour: '12', minute: '00', ampm: 'PM' });
+    const [endTime, setEndTime] = useState('');
     const [preparations, setPreparations] = useState([{ name: '', quantity: 1 }]);
     const [isPersonal, setIsPersonal] = useState(false);
 
-    const formatToTimeObj = (timeStr) => {
-        const [hourRaw, minuteRaw] = timeStr.split(':');
-        let hour = parseInt(hourRaw, 10);
-        const ampm = hour >= 12 ? 'PM' : 'AM';
-        hour = hour % 12 || 12; // Convert to 12-hour format
-        return {
-            hour: hour.toString(),
-            minute: minuteRaw,
-            ampm
-        };
+    const parseLocalDateTime = (isoString) => {
+        const date = new Date(isoString);
+        const tzOffset = date.getTimezoneOffset(); // Get timezone offset in minutes
+        date.setMinutes(date.getMinutes() - tzOffset); // Shift to local time
+        return date;
     };
 
-    const convertTo24Hour = ({ hour, minute, ampm }) => {
-        let h = parseInt(hour);
-        if (ampm === 'PM' && h !== 12) h += 12;
-        if (ampm === 'AM' && h === 12) h = 0;
-        return `${h.toString().padStart(2, '0')}:${minute}`;
-    };
+
 
     useEffect(() => {
         if (event) {
             const start = new Date(event.start_datetime);
             const end = new Date(event.end_datetime);
+
             setEventName(event.event_name);
-            setStartDate(start.toISOString().split('T')[0]);
-            setStartTime(formatToTimeObj(start.toTimeString().slice(0, 5)));
-            setEndDate(end.toISOString().split('T')[0]);
-            setEndTime(formatToTimeObj(end.toTimeString().slice(0, 5)));
+            setStartDate(start.toLocaleDateString('en-CA'));
+            setStartTime(start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }));
+            setEndDate(end.toLocaleDateString('en-CA'));
+            setEndTime(end.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }));
             setPreparations(event.preparations || [{ name: '', quantity: 1 }]);
             setIsPersonal(event.is_personal === 1);
         }
     }, [event]);
 
-    const handleSave = async () => {
-        if (!eventName.trim()) {
-            alert("Event name cannot be empty.");
-            return;
-        }
 
-        const start = `${startDate}T${convertTo24Hour(startTime)}`;
-        const end = `${endDate}T${convertTo24Hour(endTime)}`;
-
-        if (new Date(end) < new Date(start)) {
-            alert("End time cannot be earlier than start time.");
-            return;
-        }
-
-        const payload = {
-            event_id: event.id,
-            event_name: eventName,
-            start_datetime: start,
-            end_datetime: end,
-            is_personal: isPersonal ? 1 : 0,
-            preparations: preparations.filter(p => p.name.trim() !== '')
-        };
-
-        try {
-            const response = await axios.post(`${import.meta.env.VITE_EDIT_EVENT}`, payload);
-            if (response.data.success) onUpdate();
-            else console.log(response.data.message);
-        } catch (err) {
-            console.error("Error saving changes:", err);
-        }
-    };
-
-    const renderTimeSelector = (label, timeObj, setTime) => (
-        <Form.Group className="mb-3">
-            <Form.Label>{label}</Form.Label>
-            <div className="d-flex">
-                <Form.Select
-                    value={timeObj.hour}
-                    onChange={(e) => setTime({ ...timeObj, hour: e.target.value })}
-                    className="me-2"
-                >
-                    {[...Array(12)].map((_, i) => {
-                        const val = (i + 1).toString();
-                        return <option key={val} value={val}>{val}</option>;
-                    })}
-                </Form.Select>
-                <Form.Select
-                    value={timeObj.minute}
-                    onChange={(e) => setTime({ ...timeObj, minute: e.target.value })}
-                    className="me-2"
-                >
-                    {[...Array(60)].map((_, i) => {
-                        const val = i.toString().padStart(2, '0');
-                        return <option key={val} value={val}>{val}</option>;
-                    })}
-                </Form.Select>
-                <Form.Select
-                    value={timeObj.ampm}
-                    onChange={(e) => setTime({ ...timeObj, ampm: e.target.value })}
-                >
-                    <option value="AM">AM</option>
-                    <option value="PM">PM</option>
-                </Form.Select>
-            </div>
-        </Form.Group>
-    );
 
     const updatePreparation = (index, field, value) => {
         const updated = [...preparations];
@@ -121,12 +47,48 @@ const EditEventModal = ({ show, event, onClose, onUpdate }) => {
         setPreparations(updated);
     };
 
-    const addPreparation = () => setPreparations([...preparations, { name: '', quantity: 1 }]);
-
     const removePreparation = (index) => {
         const updated = [...preparations];
         updated.splice(index, 1);
         setPreparations(updated);
+    };
+
+    const addPreparation = () => {
+        setPreparations([...preparations, { name: '', quantity: 1 }]);
+    };
+
+    const handleSave = async () => {
+        const start_datetime = `${startDate}T${startTime}`;
+        const end_datetime = `${endDate}T${endTime}`;
+
+
+        const start = new Date(start_datetime);
+        const end = new Date(end_datetime);
+
+        // Validation
+        if (end < start) {
+            alert("End time cannot be earlier than start time.");
+            return;
+        }
+        const payload = {
+            event_id: event.id, // make sure this matches your backend field
+            event_name: eventName,
+            start_datetime,
+            end_datetime,
+            is_personal: isPersonal ? 1 : 0,
+            preparations: preparations.filter(p => p.name.trim() !== '')
+        };
+
+        try {
+            const response = await axios.post(`${import.meta.env.VITE_EDIT_EVENT}`, payload);
+            if (response.data.success) {
+                onUpdate();
+            } else {
+                console.log(response.data.message);
+            }
+        } catch (err) {
+            console.error("Error saving changes:", err);
+        }
     };
 
     return (
@@ -140,9 +102,9 @@ const EditEventModal = ({ show, event, onClose, onUpdate }) => {
                         <Form.Label>Event Name</Form.Label>
                         <Form.Control
                             type="text"
+                            placeholder="Enter event name"
                             value={eventName}
                             onChange={(e) => setEventName(e.target.value)}
-                            placeholder="Enter event name"
                         />
                     </Form.Group>
 
@@ -160,7 +122,14 @@ const EditEventModal = ({ show, event, onClose, onUpdate }) => {
                             </Form.Group>
                         </div>
                         <div className="col-md-6">
-                            {renderTimeSelector('Start Time', startTime, setStartTime)}
+                            <Form.Group className="mb-3">
+                                <Form.Label>Start Time</Form.Label>
+                                <Form.Control
+                                    type="time"
+                                    value={startTime}
+                                    onChange={(e) => setStartTime(e.target.value)}
+                                />
+                            </Form.Group>
                         </div>
                     </div>
 
@@ -168,7 +137,7 @@ const EditEventModal = ({ show, event, onClose, onUpdate }) => {
                         <div className="col-md-6">
                             <Form.Group className="mb-3">
                                 <Form.Label>
-                                    End Date {endDate && <span className="text-muted">({FormatDate(endDate, false)})</span>}
+                                    End Date {startDate && <span className="text-muted">({FormatDate(endDate, false)})</span>}
                                 </Form.Label>
                                 <Form.Control
                                     type="date"
@@ -178,12 +147,19 @@ const EditEventModal = ({ show, event, onClose, onUpdate }) => {
                             </Form.Group>
                         </div>
                         <div className="col-md-6">
-                            {renderTimeSelector('End Time', endTime, setEndTime)}
+                            <Form.Group className="mb-3">
+                                <Form.Label>End Time</Form.Label>
+                                <Form.Control
+                                    type="time"
+                                    value={endTime}
+                                    onChange={(e) => setEndTime(e.target.value)}
+                                />
+                            </Form.Group>
                         </div>
                     </div>
 
                     <Form.Group className="mb-3">
-                        <Form.Label>Things to Prepare</Form.Label>
+                        <Form.Label>Things to Prepare </Form.Label>
                         {preparations.map((item, index) => (
                             <div key={index} className="d-flex mb-2 align-items-center">
                                 <Form.Control
@@ -213,21 +189,21 @@ const EditEventModal = ({ show, event, onClose, onUpdate }) => {
                             </Button>
                         </div>
                     </Form.Group>
-
                     {event?.user_id === user.id && (
-                        <Form.Group className="mb-3 d-flex justify-content-end align-items-center">
-                            <Form.Label className="me-2 mb-0">
-                                This is a personal event (only visible to me)
-                            </Form.Label>
-                            <Form.Check
-                                type="checkbox"
-                                checked={isPersonal}
-                                onChange={(e) => setIsPersonal(e.target.checked)}
-                                className="mb-0"
-                                style={{ transform: 'scale(1.2)', cursor: 'pointer' }}
-                            />
-                        </Form.Group>
+                    <Form.Group className="mb-3 d-flex justify-content-end align-items-center">
+                        <Form.Label className="me-2 mb-0">
+                        This is a personal event (only visible to me)
+                        </Form.Label>
+                        <Form.Check
+                        type="checkbox"
+                        checked={isPersonal}
+                        onChange={(e) => setIsPersonal(e.target.checked)} 
+                        className="mb-0"
+                        style={{ transform: 'scale(1.2)', cursor: 'pointer' }}
+                        />
+                    </Form.Group>
                     )}
+
                 </Form>
             </Modal.Body>
             <Modal.Footer>

@@ -2,7 +2,7 @@ import React from 'react';
 import { Modal, Button } from 'react-bootstrap';
 import FormatDate from '../../extra/DateFormat';
 
-function ViewEventModal({ show, event, onClose, onEdit, onDelete }) {
+function ViewEventModal({ show, event, onClose, onEdit }) {
   return (
     <Modal show={show} onHide={onClose} centered size="lg">
       <Modal.Header closeButton>
@@ -31,7 +31,6 @@ function ViewEventModal({ show, event, onClose, onEdit, onDelete }) {
       <Modal.Footer>
         <Button variant="secondary" onClick={onClose}>Close</Button>
         <Button variant="primary" onClick={onEdit}>Edit</Button>
-        <Button variant="danger" onClick={onDelete}>Delete</Button>
       </Modal.Footer>
     </Modal>
   );

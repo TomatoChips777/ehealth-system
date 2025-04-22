@@ -18,20 +18,14 @@ function EventManager() {
   const [eventPlans, setEventPlans] = useState([]);
   const [eventName, setEventName] = useState('');
   const [startDate, setStartDate] = useState('');
-  const [startTime, setStartTime] = useState({ hour: '8', minute: '00', ampm: 'AM' });
+  const [startTime, setStartTime] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [endTime, setEndTime] = useState({ hour: '9', minute: '00', ampm: 'AM' });
+  const [endTime, setEndTime] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
   const [preparations, setPreparations] = useState([{ name: '', quantity: 1 }]);
   const [searchQuery, setSearchQuery] = useState(''); 
   const [isPersonal, setIsPersonal] = useState(false);
 
-  const formatTo24Hour = ({ hour, minute, ampm }) => {
-    let h = parseInt(hour);
-    if (ampm === 'PM' && h !== 12) h += 12;
-    if (ampm === 'AM' && h === 12) h = 0;
-    return `${h.toString().padStart(2, '0')}:${minute}`;
-  };
 
 
   useEffect(() => {
@@ -98,14 +92,11 @@ function EventManager() {
   };
 
   const handleSaveEvent = async () => {
-    const startTime24 = formatTo24Hour(startTime);
-  const endTime24 = formatTo24Hour(endTime);
+    const start_datetime = `${startDate}T${startTime}`;
+    const end_datetime = `${endDate}T${endTime}`;
 
-
-    const start_datetime = `${startDate}T${startTime24}`;
-    const end_datetime = `${endDate}T${endTime24}`;
-    const start = new Date(startTime24);
-    const end = new Date(endTime24);
+    const start = new Date(start_datetime);
+    const end = new Date(end_datetime);
 
     // Validation
     if (end < start || end === start) {
@@ -128,25 +119,13 @@ function EventManager() {
         setShowCreateModal(false);
         setEventName('');
         setStartDate('');
+        setStartTime('');
         setEndDate('');
-        setStartTime({ hour: '8', minute: '00', ampm: 'AM' });
-        setEndTime({ hour: '9', minute: '00', ampm: 'AM' });
-
+        setEndTime('');
         setPreparations([{ name: '', quantity: 1 }]);
       }
     } catch (err) {
       console.error("Error saving event", err);
-    }
-  };
-
-  const handleDeleteEvent = async (id) => {
-    try {
-      const response = await axios.delete(`${import.meta.env.VITE_DELETE_EVENT}/${id}`);
-      if (response.data.success) {
-        fetchEvents();
-      }
-    } catch (err) {
-      console.error("Error deleting event", err);
     }
   };
 
@@ -212,7 +191,6 @@ function EventManager() {
   const filteredEvents = eventPlans.filter(event =>
     event.title.toLowerCase().includes(searchQuery.toLowerCase()) // Filter by event name
   );
-
 
   return (
     <div className="container-fluid p-0 y-0">
@@ -307,7 +285,7 @@ function EventManager() {
         </Card.Body>
       </Card>
 
-      <ViewEventModal show={showViewModal} event={selectedEvent} onClose={closeModal} onEdit={openEditModal} onDelete={() => handleDeleteEvent(selectedEvent.id)}/>
+      <ViewEventModal show={showViewModal} event={selectedEvent} onClose={closeModal} onEdit={openEditModal} />
       <CreateEventModal
         show={showCreateModal}
         eventName={eventName}

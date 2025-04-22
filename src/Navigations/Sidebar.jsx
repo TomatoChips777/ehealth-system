@@ -14,6 +14,8 @@ function Sidebar({ sidebarOpen, activeLink, handleLinkClick }) {
       Appointments: '/events',
       Notifications: '/notifications',
       Users: '/users',
+      Patients: '/patients',
+      Prescriptions: '/prescriptions',
     };
     navigate(routeMap[key]);
   };
@@ -29,16 +31,19 @@ function Sidebar({ sidebarOpen, activeLink, handleLinkClick }) {
       <Nav className="flex-column">
         {[
           { key: 'Dashboard', icon: 'speedometer2' },
-          {key: 'Users', icon: 'people-fill'},
+          // {key: 'Users', icon: 'people-fill'},
+          { key: 'Patients', icon: 'people-fill' },
+          { key: 'Prescriptions', icon: 'file-earmark-medical' },
           { key: 'Inventory', icon: 'box-seam' },
-          { key: 'Barrowing', icon: 'arrow-left-right' },
+          // { key: 'Barrowing', icon: 'arrow-left-right' },
           { key: 'Appointments', icon: 'calendar' },
           { key: 'Notifications', icon: 'bell' },
+          
         ].map(({ key, icon }) => (
           <Nav.Link
             key={key}
-            className={`d-flex align-items-center px-3 py-2 rounded-pill ${
-              activeLink === key ? 'bg-primary text-white ' : 'text-white'
+            className={`d-flex align-items-center px-3 py-2 rounded-0 ${
+              activeLink === key ? 'bg-dark text-white ' : 'text-white'
             }`}
             href="#"
             onClick={() => handleClick(key)}

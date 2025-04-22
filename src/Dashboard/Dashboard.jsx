@@ -32,15 +32,31 @@ const Dashboard = ({ handleAskButton }) => {
   const borrowingsPerPage = 5;
 
   const [showCreateModal, setShowCreateModal] = useState(false);
+  // const [eventForm, setEventForm] = useState({
+  //   eventName: '',
+  //   startDate: '',
+  //   startTime: '',
+  //   endDate: '',
+  //   endTime: '',
+  //   preparations: [],
+  //   isPersonal: false,
+  // });
   const [eventForm, setEventForm] = useState({
     eventName: '',
     startDate: '',
-    startTime: '',
+    startTime: { hour: '8', minute: '00', ampm: 'AM' },
     endDate: '',
-    endTime: '',
+    endTime: { hour: '9', minute: '00', ampm: 'AM' },
     preparations: [],
     isPersonal: false,
   });
+
+  const formatTo24Hour = ({ hour, minute, ampm }) => {
+    let h = parseInt(hour);
+    if (ampm === 'PM' && h !== 12) h += 12;
+    if (ampm === 'AM' && h === 12) h = 0;
+    return `${h.toString().padStart(2, '0')}:${minute}`;
+  };
 
 
   const fetchData = async () => {
@@ -101,10 +117,15 @@ const Dashboard = ({ handleAskButton }) => {
   };
 
   const handleSaveEvent = async () => {
-    const start_datetime = `${eventForm.startDate}T${eventForm.startTime}`;
-    const end_datetime = `${eventForm.endDate}T${eventForm.endTime}`;
+    const startTime24 = formatTo24Hour(eventForm.startTime);
+    const endTime24 = formatTo24Hour(eventForm.endTime);
+
+    const start_datetime = `${eventForm.startDate}T${startTime24}`;
+    const end_datetime = `${eventForm.endDate}T${endTime24}`;
+
     const start = new Date(start_datetime);
     const end = new Date(end_datetime);
+
 
     // Validation
     if (end < start || end === start) {
@@ -138,12 +159,13 @@ const Dashboard = ({ handleAskButton }) => {
     }
   };
 
+
   const conditionCounts = inventoryData.reduce((acc, item) => {
     const condition = item.status?.toLowerCase(); // make case-insensitive
     if (condition === 'new') acc.new += 1;
     else if (condition === 'used') acc.used += 1;
     else if (condition === 'old') acc.old += 1;
-    else if (condition === 'restored') acc.restored += 1;
+    else if (condition === 'restoted') acc.restored += 1;
     return acc;
   }, { new: 0, used: 0, old: 0, restored: 0 });
 
@@ -232,7 +254,7 @@ const Dashboard = ({ handleAskButton }) => {
         </Card.Body>
       </Card>
       <Card className="mb-3">
-        <Card.Header className="fw-semibold text-primary d-flex justify-content-between">Borrowing Frequency
+        <Card.Header className="fw-semibold text-primary d-flex justify-content-between">Consulation's Frequency
           <Button variant='primary' size='sm' className='rounded-pill'
             onClick={() => handleAskButton(`Explain this data: ${formatBorrowingFrequencyText(borrowings, 'day')}`)}><ChatSquareQuoteFill size={14} /></Button>
         </Card.Header>
@@ -267,7 +289,7 @@ const Dashboard = ({ handleAskButton }) => {
             <Col>
               <Card className="mb-3">
                 <Card.Header className="fw-semibold text-primary d-flex justify-content-between">
-                  Borrowers Frequency
+                  Student Consultation's Frequency
                   <Button
                     variant='primary'
                     size='sm'
@@ -304,7 +326,7 @@ const Dashboard = ({ handleAskButton }) => {
           {/* Today's Events */}
           <Card className='mb-4'>
             <Card.Header className="fw-semibold text-primary d-flex justify-content-between">
-              Today's Events
+              Today's Scheduled Consultation's
               <Button
                 variant='primary'
                 size='sm'
@@ -316,7 +338,7 @@ const Dashboard = ({ handleAskButton }) => {
             </Card.Header>
             <Card.Body>
               {todayEvents.length === 0 ? (
-                <p>No events scheduled for today</p>
+                <p>No consultation scheduled for today</p>
               ) : (
                 <Accordion flush>
                   {todayEvents.map((event, idx) => (
@@ -328,7 +350,7 @@ const Dashboard = ({ handleAskButton }) => {
                         </div>
                       </Accordion.Header>
                       <Accordion.Body>
-                        <strong>Preparations:</strong>
+                        <strong>Reason:</strong>
                         <ul className="mb-0">
                           {(event.preparations || []).map((prep, pIdx) => (
                             <li key={pIdx}>{prep.name} (x{prep.quantity})</li>
@@ -344,7 +366,7 @@ const Dashboard = ({ handleAskButton }) => {
           {/* Ongoing Events */}
           <Card className='mb-4'>
             <Card.Header className="fw-semibold text-primary d-flex justify-content-between">
-              Ongoing Events
+              Ongoing Consultation's
               <Button
                 variant='primary'
                 size='sm'
@@ -356,7 +378,7 @@ const Dashboard = ({ handleAskButton }) => {
             </Card.Header>
             <Card.Body>
               {sortedOngoing.length === 0 ? (
-                <p>No ongoing events</p>
+                <p>No ongoing consultation's</p>
               ) : (
                 <Accordion flush>
                   {sortedOngoing.map((event, idx) => (
@@ -368,7 +390,7 @@ const Dashboard = ({ handleAskButton }) => {
                         </div>
                       </Accordion.Header>
                       <Accordion.Body>
-                        <strong>Preparations:</strong>
+                        <strong>Reason:</strong>
                         <ul className="mb-0">
                           {(event.preparations || []).map((prep, pIdx) => (
                             <li key={pIdx}>{prep.name} (x{prep.quantity})</li>
@@ -385,7 +407,7 @@ const Dashboard = ({ handleAskButton }) => {
           {/* Upcoming Events */}
           <Card className='mb-4'>
             <Card.Header className="fw-semibold text-primary d-flex justify-content-between">
-              Upcoming Events
+              Upcoming Consultation's
               <Button
                 variant='primary'
                 size='sm'
@@ -397,7 +419,7 @@ const Dashboard = ({ handleAskButton }) => {
             </Card.Header>
             <Card.Body>
               {sortedUpcoming.length === 0 ? (
-                <p>No upcoming events</p>
+                <p>No upcoming consultation's</p>
               ) : (
                 <Accordion flush>
                   {sortedUpcoming.map((event, idx) => (
@@ -498,7 +520,7 @@ const Dashboard = ({ handleAskButton }) => {
       {/* Borrowing Table with Pagination */}
       <Card className="mb-5">
         <Card.Header className="fw-semibold text-primary d-flex justify-content-between">
-          Recent Borrowing Activity
+          Recent Consultation's Activity
           <Button
             variant='primary'
             size='sm'
@@ -548,7 +570,6 @@ const Dashboard = ({ handleAskButton }) => {
                     >
                       {b.status}
                     </span>
-
                   </td>
                 </tr>
               ))}
