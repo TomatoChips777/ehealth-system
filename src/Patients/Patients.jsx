@@ -1,33 +1,60 @@
-import React, { useState } from 'react';
+import axios from 'axios';
+import React, { useEffect, useState } from 'react';
 import { Button, Card, Form, Col, Row, Container, Table, Modal } from 'react-bootstrap';
+import { PersonFill, FileEarmarkText, FileLock, Trash, Eye } from 'react-bootstrap-icons';
+import FormatDate from '../extra/DateFormat';
 
-// Dummy data for patients
-const initialPatients = [
-  { id: 1, name: 'John Doe', age: 45, gender: 'Male', condition: 'Flu', contact: '123-456-7890' },
-  { id: 2, name: 'Jane Smith', age: 34, gender: 'Female', condition: 'Headache', contact: '987-654-3210' },
-  { id: 3, name: 'Michael Johnson', age: 50, gender: 'Male', condition: 'Diabetes', contact: '555-123-9876' },
-  { id: 4, name: 'Emily Davis', age: 29, gender: 'Female', condition: 'Asthma', contact: '444-222-1111' },
-];
 
 function Patients() {
-  const [patients, setPatients] = useState(initialPatients);
+  const [patients, setPatients] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [newPatient, setNewPatient] = useState({ name: '', age: '', gender: '', condition: '', contact: '' });
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const patientsPerPage = 5; // Limit per page
+
+  // Fetch patients from API
+  const fetchPatients = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_GET_PATIENTS}`);
+      setPatients(response.data);
+    } catch (error) {
+      console.error("Error fetching patients:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchPatients();
+  }, []);
+
   // Handle search input
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
+    setCurrentPage(1); // Reset to the first page when search term changes
   };
 
   // Filter patients based on search term
   const filteredPatients = patients.filter(
     (patient) =>
-      patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      patient.condition.toLowerCase().includes(searchTerm.toLowerCase())
+      patient.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      patient.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const totalPages = Math.ceil(filteredPatients.length / patientsPerPage);
+
+  // Get current patients for the current page
+  const indexOfLastPatient = currentPage * patientsPerPage;
+  const indexOfFirstPatient = indexOfLastPatient - patientsPerPage;
+  const currentPatients = filteredPatients.slice(indexOfFirstPatient, indexOfLastPatient);
+
+  // Handle page change
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
 
   // View patient details
   const handleViewDetails = (patient) => {
@@ -64,17 +91,34 @@ function Patients() {
     setPatients(updatedPatients);
   };
 
+  // Handle Consultation
+  const handleConsultation = (patient) => {
+    // Placeholder function: Open Consultation Modal or navigate to Consultation page
+    console.log("Consultation for patient:", patient.name);
+  };
+
+  // Handle Prescription
+  const handlePrescription = (patient) => {
+    // Placeholder function: Open Prescription Modal or navigate to Prescription page
+    console.log("Prescription for patient:", patient.name);
+  };
+
   return (
-    <Container className="" fluid>
+    <Container fluid>
       <Row>
         <Col md={12}>
           <Card>
-            <Card.Header as="h5">Patient List</Card.Header>
+            <Card.Header as="h5" className="d-flex justify-content-between align-items-center">
+              Patient List
+              <Button variant="primary" size="sm" onClick={handleAddPatient}>
+                Add New Patient
+              </Button>
+            </Card.Header>
             <Card.Body>
               <Form.Group className="mb-3">
                 <Form.Control
                   type="text"
-                  placeholder="Search by Name or Condition"
+                  placeholder="Search by Name or Email"
                   value={searchTerm}
                   onChange={handleSearch}
                 />
@@ -82,141 +126,87 @@ function Patients() {
               <Table striped bordered hover responsive>
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Age</th>
-                    <th>Condition</th>
-                    <th>Contact</th>
-                    <th>Actions</th>
+                    <th>ID</th>
+                    <th>Full Name</th>
+                    <th>Date of birth</th>
+                    <th>Gender</th>
+                    <th>Email</th>
+                    <th className="text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredPatients.length > 0 ? (
-                    filteredPatients.map((patient) => (
+                  {currentPatients.length > 0 ? (
+                    currentPatients.map((patient) => (
                       <tr key={patient.id}>
-                        <td>{patient.name}</td>
-                        <td>{patient.age}</td>
-                        <td>{patient.condition}</td>
-                        <td>{patient.contact}</td>
-                        <td>
-                          <Button variant="info" onClick={() => handleViewDetails(patient)}>
-                            View Details
+                        <td>{patient.student_id}</td>
+                        <td>{patient.full_name}</td>
+                        <td>{FormatDate(patient.birthdate,false)}</td>
+                        <td>{patient.gender}</td>
+                        <td>{patient.email}</td>
+                        <td className="text-center">
+                          <Button
+                            variant="info"
+                            size="sm"
+                            className="rounded-0"
+                            onClick={() => handleViewDetails(patient)}
+                          >
+                            <Eye />
                           </Button>{' '}
-                          <Button variant="danger" onClick={() => handleDeletePatient(patient.id)}>
-                            Delete
+                          <Button
+                            variant="warning"
+                            size="sm"
+                            className="rounded-0"
+                            onClick={() => handleConsultation(patient)}
+                          >
+                            <PersonFill />
+                          </Button>{' '}
+                          <Button
+                            variant="success"
+                            size="sm"
+                            className="rounded-0"
+                            onClick={() => handlePrescription(patient)}
+                          >
+                            <FileEarmarkText />
                           </Button>
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="5" className="text-center">
+                      <td colSpan="6" className="text-center">
                         No patients found
                       </td>
                     </tr>
                   )}
                 </tbody>
               </Table>
-              <Button variant="primary" onClick={handleAddPatient}>
-                Add New Patient
-              </Button>
+
+              {/* Pagination Controls */}
+              <div className="d-flex justify-content-between align-items-center">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="rounded-0"
+                  disabled={currentPage === 1}
+                  onClick={() => handlePageChange(currentPage - 1)}
+                >
+                  Previous
+                </Button>
+                <span>{`Page ${currentPage} of ${totalPages}`}</span>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="rounded-0"
+                  disabled={currentPage === totalPages}
+                  onClick={() => handlePageChange(currentPage + 1)}
+                >
+                  Next
+                </Button>
+              </div>
             </Card.Body>
           </Card>
         </Col>
       </Row>
-
-      {/* Patient Details Modal */}
-      <Modal show={showDetails} onHide={closeDetails}>
-        <Modal.Header closeButton>
-          <Modal.Title>Patient Details</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {selectedPatient && (
-            <div>
-              <p><strong>Name:</strong> {selectedPatient.name}</p>
-              <p><strong>Age:</strong> {selectedPatient.age}</p>
-              <p><strong>Gender:</strong> {selectedPatient.gender}</p>
-              <p><strong>Condition:</strong> {selectedPatient.condition}</p>
-              <p><strong>Contact:</strong> {selectedPatient.contact}</p>
-            </div>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={closeDetails}>
-            Close
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
-      {/* Add Patient Modal */}
-      <Modal show={showModal} onHide={() => setShowModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Add New Patient</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form>
-            <Form.Group className="mb-3">
-              <Form.Label>Name</Form.Label>
-              <Form.Control
-                type="text"
-                name="name"
-                value={newPatient.name}
-                onChange={handleChange}
-                placeholder="Enter patient name"
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Age</Form.Label>
-              <Form.Control
-                type="number"
-                name="age"
-                value={newPatient.age}
-                onChange={handleChange}
-                placeholder="Enter patient age"
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Gender</Form.Label>
-              <Form.Control
-                as="select"
-                name="gender"
-                value={newPatient.gender}
-                onChange={handleChange}
-              >
-                <option>Male</option>
-                <option>Female</option>
-              </Form.Control>
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Condition</Form.Label>
-              <Form.Control
-                type="text"
-                name="condition"
-                value={newPatient.condition}
-                onChange={handleChange}
-                placeholder="Enter patient's condition"
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Contact</Form.Label>
-              <Form.Control
-                type="text"
-                name="contact"
-                value={newPatient.contact}
-                onChange={handleChange}
-                placeholder="Enter patient contact number"
-              />
-            </Form.Group>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>
-            Close
-          </Button>
-          <Button variant="primary" onClick={handleAddNewPatient}>
-            Save Patient
-          </Button>
-        </Modal.Footer>
-      </Modal>
     </Container>
   );
 }

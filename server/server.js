@@ -12,6 +12,7 @@ const inventory = require('./routes/inventory');
 const events = require('./routes/events');
 const notifications = require('./routes/notifications');
 const dashboard = require('./routes/dashboard');
+const patients = require('./routes/patients');
 const cors = require('cors');
 
 const server = http.createServer(app);
@@ -38,6 +39,7 @@ app.use('/api/inventory', inventory);
 app.use('/api/events', events);
 app.use('/api/notifications', notifications);
 app.use('/api/dashboard', dashboard);
+app.use('/api/patients', patients);
 app.post('/send-email', async (req, res) => {
   const { to, subject, message } = req.body;
 
@@ -70,9 +72,9 @@ app.post('/send-email', async (req, res) => {
   }
 });
 
-const { checkUpcomingEvents } = require('./utils/checkEvent');
+// const { checkUpcomingEvents } = require('./utils/checkEvent');
 // setInterval(() => checkUpcomingEvents(io), 60 * 60 * 1000);
-setInterval(() => checkUpcomingEvents(io), 10 * 1000);
+// setInterval(() => checkUpcomingEvents(io), 10 * 1000);
 
 
 const port = 3000;
