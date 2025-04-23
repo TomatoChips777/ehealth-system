@@ -1,12 +1,6 @@
-import React, { useState } from 'react';
-import { Button, Form, Card, Col, Row, Container, Alert } from 'react-bootstrap';
-
-// Dummy data
-const students = [
-  { id: 1, name: 'John Doe', age: 20, gender: 'Male', condition: 'Flu', studentId: 'S12345', course: 'Computer Science', emergencyContact: 'Jane Doe - (555) 123-4567' },
-  { id: 2, name: 'Jane Smith', age: 21, gender: 'Female', condition: 'Headache', studentId: 'S12346', course: 'Psychology', emergencyContact: 'Mark Smith - (555) 987-6543' },
-  { id: 3, name: 'Michael Johnson', age: 19, gender: 'Male', condition: 'Asthma', studentId: 'S12347', course: 'Engineering', emergencyContact: 'Samantha Johnson - (555) 222-3333' },
-];
+import axios from 'axios';
+import React, { useEffect, useState } from 'react';
+import { Button, Form, Card, Col, Row, Container, Alert, InputGroup } from 'react-bootstrap';
 
 const medications = [
   { id: 1, name: 'Paracetamol', type: 'Tablet', unit: 'mg' },
@@ -16,15 +10,45 @@ const medications = [
 ];
 
 function Prescriptions() {
-  const [selectedStudent, setSelectedStudent] = useState(students[0]);
+  const [students, setStudents] = useState([]);
+  const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedMedicines, setSelectedMedicines] = useState([]);
   const [dosage, setDosage] = useState('');
   const [frequency, setFrequency] = useState('');
   const [duration, setDuration] = useState('');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Handle medicine selection
+  const fetchStudents = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_GET_PATIENTS}`);
+      setStudents(response.data);
+    } catch (error) {
+      console.error("Error fetching students", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchStudents();
+  }, []);
+
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setSelectedStudent(null);
+      return;
+    }
+  
+    const match = students.find((s) =>
+      [s.full_name, s.student_id, s.email]
+        .some((field) =>
+          field?.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+    );
+    setSelectedStudent(match || null);
+  }, [searchQuery, students]);
+  
+
   const handleMedicineChange = (e) => {
     const { value, checked } = e.target;
     setSelectedMedicines((prev) =>
@@ -32,8 +56,11 @@ function Prescriptions() {
     );
   };
 
-  // Handle form submission
   const handleSubmit = () => {
+    if (!selectedStudent) {
+      setError('Please search and select a valid student.');
+      return;
+    }
     if (!dosage || !frequency || !duration) {
       setError('Please fill in all required fields.');
       return;
@@ -48,7 +75,6 @@ function Prescriptions() {
       notes,
     };
 
-    // Submit Prescription (for demonstration purposes, just log it)
     console.log('Prescription Submitted:', prescription);
     setError('');
   };
@@ -61,28 +87,31 @@ function Prescriptions() {
             <Card.Header as="h5">Student Information</Card.Header>
             <Card.Body>
               <Form.Group className="mb-3">
-                <Form.Label>Select Student</Form.Label>
+                <Form.Label>Search Student</Form.Label>
+                <InputGroup>
                 <Form.Control
-                  as="select"
-                  value={selectedStudent.id}
-                  onChange={(e) => {
-                    const student = students.find((s) => s.id === parseInt(e.target.value));
-                    setSelectedStudent(student);
-                  }}
-                >
-                  {students.map((student) => (
-                    <option key={student.id} value={student.id}>
-                      {student.name} - {student.condition}
-                    </option>
-                  ))}
-                </Form.Control>
+  type="text"
+  placeholder="Search by name, student ID, or email..."
+  value={searchQuery}
+  onChange={(e) => setSearchQuery(e.target.value)}
+/>
+
+                </InputGroup>
               </Form.Group>
-              <p><strong>Age:</strong> {selectedStudent.age}</p>
-              <p><strong>Gender:</strong> {selectedStudent.gender}</p>
-              <p><strong>Condition:</strong> {selectedStudent.condition}</p>
-              <p><strong>Student ID:</strong> {selectedStudent.studentId}</p>
-              <p><strong>Course:</strong> {selectedStudent.course}</p>
-              <p><strong>Emergency Contact:</strong> {selectedStudent.emergencyContact}</p>
+
+              {selectedStudent ? (
+                <>
+                  <p><strong>Name:</strong> {selectedStudent.full_name}</p>
+                  <p><strong>Age:</strong> {selectedStudent.age}</p>
+                  <p><strong>Gender:</strong> {selectedStudent.gender}</p>
+                  <p><strong>Condition:</strong> {selectedStudent.condition}</p>
+                  <p><strong>Student ID:</strong> {selectedStudent.student_id}</p>
+                  <p><strong>Course:</strong> {selectedStudent.course}</p>
+                  <p><strong>Emergency Contact:</strong> {selectedStudent.emergencyContact}</p>
+                </>
+              ) : (
+                searchQuery && <Alert variant="warning">No student found with that name.</Alert>
+              )}
             </Card.Body>
           </Card>
         </Col>
@@ -92,7 +121,6 @@ function Prescriptions() {
             <Card.Header as="h5">Create Prescription</Card.Header>
             <Card.Body>
               <Form>
-                {/* Medicine Selection */}
                 <Form.Group className="mb-3">
                   <Form.Label>Select Medicines</Form.Label>
                   {medications.map((medicine) => (
@@ -106,14 +134,13 @@ function Prescriptions() {
                   ))}
                 </Form.Group>
 
-                {/* Dosage, Frequency, Duration */}
                 <Row>
                   <Col md={4}>
                     <Form.Group className="mb-3">
                       <Form.Label>Dosage</Form.Label>
                       <Form.Control
                         type="text"
-                        placeholder="Enter Dosage (e.g., 500mg)"
+                        placeholder="e.g., 500mg"
                         value={dosage}
                         onChange={(e) => setDosage(e.target.value)}
                       />
@@ -124,7 +151,7 @@ function Prescriptions() {
                       <Form.Label>Frequency</Form.Label>
                       <Form.Control
                         type="text"
-                        placeholder="Enter Frequency (e.g., 3 times a day)"
+                        placeholder="e.g., 3 times a day"
                         value={frequency}
                         onChange={(e) => setFrequency(e.target.value)}
                       />
@@ -135,7 +162,7 @@ function Prescriptions() {
                       <Form.Label>Duration</Form.Label>
                       <Form.Control
                         type="text"
-                        placeholder="Enter Duration (e.g., 7 days)"
+                        placeholder="e.g., 7 days"
                         value={duration}
                         onChange={(e) => setDuration(e.target.value)}
                       />
@@ -143,7 +170,6 @@ function Prescriptions() {
                   </Col>
                 </Row>
 
-                {/* Additional Notes */}
                 <Form.Group className="mb-3">
                   <Form.Label>Additional Notes</Form.Label>
                   <Form.Control
@@ -154,25 +180,21 @@ function Prescriptions() {
                   />
                 </Form.Group>
 
-                {/* Submit Button */}
                 <Button variant="primary" onClick={handleSubmit}>
                   Submit Prescription
                 </Button>
               </Form>
-
-              {/* Error Message */}
               {error && <Alert variant="danger" className="mt-3">{error}</Alert>}
             </Card.Body>
           </Card>
         </Col>
       </Row>
 
-      {/* Prescription Summary */}
-      {selectedMedicines.length > 0 && (
+      {selectedStudent && selectedMedicines.length > 0 && (
         <Card className="mt-4">
           <Card.Header as="h5">Prescription Summary</Card.Header>
           <Card.Body>
-            <h6>Student: {selectedStudent.name}</h6>
+            <h6>Student: {selectedStudent.full_name}</h6>
             <p><strong>Condition:</strong> {selectedStudent.condition}</p>
             <ul>
               {selectedMedicines.map((medicine) => (
@@ -182,7 +204,7 @@ function Prescriptions() {
             <p><strong>Dosage:</strong> {dosage}</p>
             <p><strong>Frequency:</strong> {frequency}</p>
             <p><strong>Duration:</strong> {duration}</p>
-            <p><strong>Additional Notes:</strong> {notes}</p>
+            <p><strong>Notes:</strong> {notes}</p>
           </Card.Body>
         </Card>
       )}

@@ -136,3 +136,22 @@
   border: 2px solid #007bff; /* Border color on hover */
 }
 
+
+
+.human-body-diagram {
+  position: relative;
+  height: 400px;
+  background: url('./assets/body-outline.png') no-repeat center;
+  background-size: contain;
+}
+
+.body-part-dot {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid white;
+  cursor: pointer;
+  z-index: 2;
+  transform: translate(-50%, -50%);
+}

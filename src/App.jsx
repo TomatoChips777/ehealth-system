@@ -19,6 +19,10 @@ import Users from './User Management/Users';
 import ChatWidget from './Chatbot/ChatWidget';
 import Patients from './Patients/Patients';
 import Prescriptions from './Prescriptions/Prescriptions';
+import ConsultationForm from './Patients/components/ConsultationForm';
+import AnnualPhysicalExamForm from './Patients/components/AnnualPhysicalExamForm';
+import PatientDetails from './Patients/components/PatientDetails';
+import AppointmentPage from './Appointment/Appointment';
 function App() {
   const [chatMessage, setChatMessage] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -55,7 +59,11 @@ function App() {
               <Routes>
                 <Route path="/" element={<Dashboard handleAskButton={handleAskButton}/>} />
                 <Route path='/users' element={<Users handleAskButton={handleAskButton}/>}/>
-                <Route path='/patients' element={<Patients handleAskButton={handleAskButton}/>}/>
+                <Route path='/patients' element={<Patients handleAskButton={handleAskButton} handleLinkClick={handleLinkClick}/>}/>
+                <Route path='/consultation' element={<ConsultationForm/>}/>
+                <Route path='/annualreport' element={<AnnualPhysicalExamForm/>}/>
+                <Route path='/patient-details' element={<PatientDetails/>}/>
+                <Route path='/appointment' element={<AppointmentPage/>} />
                 <Route path='/prescriptions' element={<Prescriptions handleAskButton={handleAskButton}/>}/>
                 <Route path="/inventory" element={<Inventory handleAskButton={handleAskButton} />} />
                 <Route path="/borrowing" element={<BorrowingScreen handleAskButton={handleAskButton} />} />

@@ -3,9 +3,10 @@ import React, { useEffect, useState } from 'react';
 import { Button, Card, Form, Col, Row, Container, Table, Modal } from 'react-bootstrap';
 import { PersonFill, FileEarmarkText, FileLock, Trash, Eye } from 'react-bootstrap-icons';
 import FormatDate from '../extra/DateFormat';
+import { useNavigate } from 'react-router-dom';
 
-
-function Patients() {
+function Patients({handleLinkClick}) {
+  const navigate = useNavigate(); 
   const [patients, setPatients] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPatient, setSelectedPatient] = useState(null);
@@ -58,9 +59,9 @@ function Patients() {
 
   // View patient details
   const handleViewDetails = (patient) => {
-    setSelectedPatient(patient);
-    setShowDetails(true);
+    navigate('/patient-details', { state: { patient } });
   };
+  
 
   // Close the details modal
   const closeDetails = () => {
@@ -91,18 +92,23 @@ function Patients() {
     setPatients(updatedPatients);
   };
 
-  // Handle Consultation
-  const handleConsultation = (patient) => {
-    // Placeholder function: Open Consultation Modal or navigate to Consultation page
-    console.log("Consultation for patient:", patient.name);
-  };
 
   // Handle Prescription
   const handlePrescription = (patient) => {
     // Placeholder function: Open Prescription Modal or navigate to Prescription page
-    console.log("Prescription for patient:", patient.name);
+    // console.log("Prescription for patient:", patient.name);
+    handleLinkClick('Prescriptions');
+    navigate('/prescriptions', { state: { patient } });
+
   };
 
+  const handleConsultation = (patient) =>{
+      navigate('/consultation', { state: { patient } });
+  }
+
+  const handleAnnualReport = (patient) => {
+    navigate('/annualreport', { state: { patient } });
+  };
   return (
     <Container fluid>
       <Row>
@@ -153,6 +159,14 @@ function Patients() {
                             <Eye />
                           </Button>{' '}
                           <Button
+                            variant="primary"
+                            size="sm"
+                            className="rounded-0"
+                            onClick={() => handleAnnualReport(patient)}
+                          >
+                            <PersonFill />
+                          </Button>{' '}
+                          <Button
                             variant="warning"
                             size="sm"
                             className="rounded-0"
@@ -160,6 +174,7 @@ function Patients() {
                           >
                             <PersonFill />
                           </Button>{' '}
+                          
                           <Button
                             variant="success"
                             size="sm"

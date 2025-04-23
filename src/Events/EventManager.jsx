@@ -210,9 +210,8 @@ function EventManager() {
   const daysInMonth = getDaysInMonth(currentMonthNumber, currentYear);
 
   const filteredEvents = eventPlans.filter(event =>
-    event.title.toLowerCase().includes(searchQuery.toLowerCase()) // Filter by event name
+    event.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
 
   return (
     <div className="container-fluid p-0 y-0">
