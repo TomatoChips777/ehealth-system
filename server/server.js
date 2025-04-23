@@ -77,7 +77,7 @@ app.post('/send-email', async (req, res) => {
 // setInterval(() => checkUpcomingEvents(io), 10 * 1000);
 
 
-const port = 3000;
+const port = 3030;
 server.listen(port, () => {
     console.log(`Server is listening on http://localhost:${port}`);
 });
