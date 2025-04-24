@@ -121,7 +121,7 @@ const filteredPatients = patients.filter(
           <Card>
             <Card.Header as="h5" className="d-flex justify-content-between align-items-center">
               Patient List
-              <Button variant="primary" size="sm" onClick={handleAddPatient}>
+              <Button variant="success" size="sm" onClick={handleAddPatient}>
                 Add New Patient
               </Button>
             </Card.Header>
@@ -149,36 +149,36 @@ const filteredPatients = patients.filter(
                   {currentPatients.length > 0 ? (
                     currentPatients.map((patient) => (
                       <tr key={patient.id}>
-                        <td>{patient.id}</td>
+                        <td>{patient.student_id}</td>
                         <td>{patient.full_name}</td>
                         <td>{FormatDate(patient.birthdate, false)}</td>
-                        <td>{patient.gender}</td>
+                        <td>{patient.sex}</td>
                         <td>{patient.email}</td>
                         <td className="text-center">
                           <Button
                             variant="info"
                             size="sm"
-                            className="rounded-0"
+                            className="rounded-0 me-2"
                             onClick={() => handleViewDetails(patient)}
                           >
                             <Eye />
-                          </Button>{' '}
+                          </Button>
                           <Button
                             variant="primary"
                             size="sm"
-                            className="rounded-0"
+                            className="rounded-0 me-2"
                             onClick={() => handleAnnualReport(patient)}
                           >
                             <PersonFill />
-                          </Button>{' '}
+                          </Button>
                           <Button
                             variant="warning"
                             size="sm"
-                            className="rounded-0"
+                            className="rounded-0 me-2"
                             onClick={() => handleConsultation(patient)}
                           >
                             <PersonFill />
-                          </Button>{' '}
+                          </Button>
                           <Button
                             variant="success"
                             size="sm"
@@ -228,7 +228,7 @@ const filteredPatients = patients.filter(
       </Row>
 
       {/* Add New Patient Modal */}
-      <Modal show={showModal} onHide={() => setShowModal(false)}>
+      <Modal show={showModal} onHide={() => setShowModal(false)} size='xl'>
         <Modal.Header closeButton>
           <Modal.Title>Add New Patient</Modal.Title>
         </Modal.Header>

@@ -1,6 +1,7 @@
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { Button, Form, Card, Col, Row, Container, Alert, InputGroup } from 'react-bootstrap';
+import CalculateAge from '../extra/CalculateAge';
 
 const medications = [
   { id: 1, name: 'Paracetamol', type: 'Tablet', unit: 'mg' },
@@ -102,7 +103,7 @@ function Prescriptions() {
               {selectedStudent ? (
                 <>
                   <p><strong>Name:</strong> {selectedStudent.full_name}</p>
-                  <p><strong>Age:</strong> {selectedStudent.age}</p>
+                  <p><strong>Age:</strong> {CalculateAge(selectedStudent.birthdate)}</p>
                   <p><strong>Gender:</strong> {selectedStudent.gender}</p>
                   <p><strong>Condition:</strong> {selectedStudent.condition}</p>
                   <p><strong>Student ID:</strong> {selectedStudent.student_id}</p>
@@ -110,7 +111,7 @@ function Prescriptions() {
                   <p><strong>Emergency Contact:</strong> {selectedStudent.emergencyContact}</p>
                 </>
               ) : (
-                searchQuery && <Alert variant="warning">No student found with that name.</Alert>
+                searchQuery && <Alert variant="warning">No student found.</Alert>
               )}
             </Card.Body>
           </Card>

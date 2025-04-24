@@ -24,23 +24,11 @@ const Dashboard = ({ handleAskButton }) => {
   const [loading, setLoading] = useState(true);
   const [assistFrequency, setAssistFrequency] = useState([]);
   const [borrowersData, setBorrowersData] = useState([]);
-
   const [inventoryPage, setInventoryPage] = useState(1);
   const itemsPerPage = 5;
-
   const [borrowingsPage, setBorrowingsPage] = useState(1);
   const borrowingsPerPage = 5;
-
   const [showCreateModal, setShowCreateModal] = useState(false);
-  // const [eventForm, setEventForm] = useState({
-  //   eventName: '',
-  //   startDate: '',
-  //   startTime: '',
-  //   endDate: '',
-  //   endTime: '',
-  //   preparations: [],
-  //   isPersonal: false,
-  // });
   const [eventForm, setEventForm] = useState({
     eventName: '',
     startDate: '',
@@ -158,14 +146,12 @@ const Dashboard = ({ handleAskButton }) => {
       console.error('Error saving event:', err);
     }
   };
-
-
   const conditionCounts = inventoryData.reduce((acc, item) => {
-    const condition = item.status?.toLowerCase(); // make case-insensitive
+    const condition = item.status?.toLowerCase();
     if (condition === 'new') acc.new += 1;
     else if (condition === 'used') acc.used += 1;
     else if (condition === 'old') acc.old += 1;
-    else if (condition === 'restoted') acc.restored += 1;
+    else if (condition === 'restored') acc.restored += 1;
     return acc;
   }, { new: 0, used: 0, old: 0, restored: 0 });
 

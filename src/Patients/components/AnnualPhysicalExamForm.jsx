@@ -1,15 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, Form, Row, Col, Button, Card } from 'react-bootstrap';
+import { useLocation, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import CalculateAge from '../../extra/CalculateAge';
 
 function AnnualPhysicalExamForm() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const patient = location.state?.patient;
   const [formData, setFormData] = useState({
-    name: '',
-    age: '',
-    sex: '',
-    address: '',
-    contact_number: '',
-    contact_person: '',
-    contact_person_number: '',
+    patient_id: patient?.id || '',
+    name: patient?.full_name || '',
+    age: CalculateAge(patient.birthdate),
+    sex: patient.sex || '',
+    address: patient.address || '',
+    contact_number: patient.contact_number || '',
+    contact_person: patient.contact_person || '',
+    contact_person_number: patient.contact_person_number || '',
     bp: '',
     temp: '',
     heart_rate: '',
@@ -31,11 +38,58 @@ function AnnualPhysicalExamForm() {
   });
 
   const [findings, setFindings] = useState({});
+  const [loading, setLoading] = useState(true);
 
   const categories = [
     "Skin", "Lungs", "Nose", "Heart", "Mouth", "Abdomen", "Pharynx", "Rectum", "Tonsils",
     "Genitalia", "Gums", "Spine", "Lymph nodes", "Arms", "Neck", "Legs", "Chest", "Feet"
   ];
+  
+  useEffect(() => {
+    // Fetch existing annual physical exam data if available
+    const fetchExamData = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_GET_ANNUAL_PHYSICAL_EXAM_BY_ID}/${patient.id}`);
+        const examData = response.data.exam;
+        setFormData(prev => ({
+          ...prev,
+          bp: examData.bp || '',
+          temp: examData.temp || '',
+          heart_rate: examData.heart_rate || '',
+          rr: examData.rr || '',
+          height: examData.height || '',
+          weight: examData.weight || '',
+          bmi: examData.bmi || '',
+          asthma: examData.asthma || '',
+          allergies: examData.allergies || '',
+          medical_condition: examData.medical_condition || '',
+          vision_od: examData.vision_od || '',
+          vision_os: examData.vision_os || '',
+          hearing_right: examData.hearing_right || '',
+          hearing_left: examData.hearing_left || '',
+          remarks: examData.remarks || '',
+          assessment: examData.assessment || '',
+          recommendation: examData.recommendation || '',
+          date_examined: examData.date_examined || ''
+        }));
+  
+        const examFindings = Array.isArray(examData.findings) ? examData.findings.reduce((acc, finding) => {
+          acc[finding.body_part] = { status: finding.status, note: finding.notes || '' };
+          return acc;
+        }, {}) : {};
+  
+        setFindings(examFindings);
+  
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching exam data:', error);
+        setLoading(false);
+      }
+    };
+  
+    fetchExamData();
+  }, [patient]);
+  
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -43,7 +97,7 @@ function AnnualPhysicalExamForm() {
   };
 
   const handleFindingChange = (e, part, type) => {
-    const value = type === "status" ? e.target.value : e.target.value;
+    const value = e.target.value;
     setFindings(prev => ({
       ...prev,
       [part]: {
@@ -53,10 +107,22 @@ function AnnualPhysicalExamForm() {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Form Data:", formData);
-    console.log("Findings:", findings);
+
+    const requestData = {
+      ...formData,
+      findings
+    };
+
+    try {
+      const response = await axios.post(`${import.meta.env.VITE_ANNUAL_PHYSICAL_EXAM}`, requestData);
+      alert("Annual Physical Exam added successfully.");
+      setFindings({});
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      alert("An error occurred while submitting the form.");
+    }
   };
 
   return (
@@ -67,7 +133,7 @@ function AnnualPhysicalExamForm() {
           <Form onSubmit={handleSubmit}>
             {/* Basic Info */}
             <Row>
-              <Col md={6}><Form.Group className="mb-3"><Form.Label>Name</Form.Label><Form.Control name="name" value={formData.name} onChange={handleChange} /></Form.Group></Col>
+              <Col md={6}><Form.Group  className="mb-3"><Form.Label>Name</Form.Label><Form.Control name="name" value={formData.name} onChange={handleChange} /></Form.Group></Col>
               <Col md={3}><Form.Group className="mb-3"><Form.Label>Age</Form.Label><Form.Control name="age" value={formData.age} onChange={handleChange} /></Form.Group></Col>
               <Col md={3}><Form.Group className="mb-3"><Form.Label>Sex</Form.Label><Form.Control name="sex" value={formData.sex} onChange={handleChange} /></Form.Group></Col>
             </Row>
@@ -166,3 +232,34 @@ function AnnualPhysicalExamForm() {
   );
 }
 export default AnnualPhysicalExamForm;
+//   return (
+//     <Container>
+//       <Card>
+//         <Card.Header as="h5">Annual Physical Examination Form</Card.Header>
+//         <Card.Body>
+//           {loading ? (
+//             <div>Loading exam data...</div>
+//           ) : (
+//             <Form onSubmit={handleSubmit}>
+//               {/* Basic Info */}
+//               <Row>
+//                 <Col md={6}><Form.Group className="mb-3"><Form.Label>Name</Form.Label><Form.Control name="name" value={formData.name} onChange={handleChange} /></Form.Group></Col>
+//                 <Col md={3}><Form.Group className="mb-3"><Form.Label>Age</Form.Label><Form.Control name="age" value={formData.age} onChange={handleChange} /></Form.Group></Col>
+//                 <Col md={3}><Form.Group className="mb-3"><Form.Label>Sex</Form.Label><Form.Control name="sex" value={formData.sex} onChange={handleChange} /></Form.Group></Col>
+//               </Row>
+              
+//               {/* Additional fields and examination sections (Vitals, History, Findings, etc.) */}
+
+//               {/* Submit Button */}
+//               <div className="d-flex justify-content-end">
+//                 <Button type="submit" variant="primary">Submit Form</Button>
+//               </div>
+//             </Form>
+//           )}
+//         </Card.Body>
+//       </Card>
+//     </Container>
+//   );
+// }
+
+// export default AnnualPhysicalExamForm;

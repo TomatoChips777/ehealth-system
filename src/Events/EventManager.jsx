@@ -305,7 +305,6 @@ function EventManager() {
           </div>
         </Card.Body>
       </Card>
-
       <ViewEventModal show={showViewModal} event={selectedEvent} onClose={closeModal} onEdit={openEditModal} onDelete={() => handleDeleteEvent(selectedEvent.id)}/>
       <CreateEventModal
         show={showCreateModal}
