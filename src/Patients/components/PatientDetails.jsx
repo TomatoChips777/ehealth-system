@@ -2,9 +2,11 @@ import React from 'react';
 import { Card, Container, Row, Col, Badge, ListGroup, Table, Image } from 'react-bootstrap';
 import { PersonFill } from 'react-bootstrap-icons';
 import { PieChart, Pie, Cell, Tooltip, Legend, BarChart, XAxis, YAxis, CartesianGrid, Bar, ResponsiveContainer } from 'recharts';
-
-function PatientDetails({ patient, exam, findings }) {
-  // Dummy fallback data
+import { useLocation } from 'react-router-dom';
+function PatientDetails() {
+  const location = useLocation(); // Use `useLocation` to get the state passed via navigate
+  const { patient, exam, findings }= location.state || {};
+  console.log(patient)
   const dummyPatient = {
     student_id: '123456',
     full_name: 'Jane Doe',
@@ -13,12 +15,6 @@ function PatientDetails({ patient, exam, findings }) {
   };
 
   const dummyExam = {
-    age: '28',
-    sex: 'Female',
-    address: '123 Main St, Sample City',
-    contact_number: '09171234567',
-    contact_person: 'John Doe',
-    contact_person_number: '0987654321',
     bp: '120/80',
     temp: '36.6',
     heart_rate: '72',
@@ -100,12 +96,12 @@ function PatientDetails({ patient, exam, findings }) {
                 <Col md={6}>
                   <ListGroup variant="flush">
                     <ListGroup.Item><strong>Student ID:</strong> {safePatient.student_id}</ListGroup.Item>
-                    <ListGroup.Item><strong>Age:</strong> {safeExam.age}</ListGroup.Item>
-                    <ListGroup.Item><strong>Sex:</strong> {safeExam.sex}</ListGroup.Item>
-                    <ListGroup.Item><strong>Address:</strong> {safeExam.address}</ListGroup.Item>
-                    <ListGroup.Item><strong>Contact Number:</strong> {safeExam.contact_number}</ListGroup.Item>
-                    <ListGroup.Item><strong>Contact Person:</strong> {safeExam.contact_person}</ListGroup.Item>
-                    <ListGroup.Item><strong>Contact Person's Number:</strong> {safeExam.contact_person_number}</ListGroup.Item>
+                    <ListGroup.Item><strong>Age:</strong> {patient.age}</ListGroup.Item>
+                    <ListGroup.Item><strong>Sex:</strong> {patient.sex}</ListGroup.Item>
+                    <ListGroup.Item><strong>Address:</strong> {patient.address}</ListGroup.Item>
+                    <ListGroup.Item><strong>Contact Number:</strong> {patient.contact_number}</ListGroup.Item>
+                    <ListGroup.Item><strong>Contact Person:</strong> {patient.contact_person}</ListGroup.Item>
+                    <ListGroup.Item><strong>Contact Person's Number:</strong> {patient.contact_person_number}</ListGroup.Item>
                   </ListGroup>
                 </Col>
                 <Col md={6}>
@@ -124,44 +120,6 @@ function PatientDetails({ patient, exam, findings }) {
           </Row>
         </Card.Body>
       </Card>
-
-      {/* <Card className="mb-4 shadow">
-        <Card.Header as="h5">Findings Status Overview</Card.Header>
-        <Card.Body>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={chartData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                outerRadius={100}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {chartData.map((_, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value, name, props) => [`${value} parts`, `Status: ${props.payload.name}`]} content={({ active, payload }) => {
-                if (active && payload && payload.length) {
-                  return (
-                    <div className="p-2 bg-white border rounded shadow-sm">
-                      <strong>Status: {payload[0].name}</strong>
-                      <p className="mb-1"><strong>Count:</strong> {payload[0].value}</p>
-                      <p className="mb-0"><strong>Parts:</strong> {payload[0].payload.details}</p>
-                    </div>
-                  );
-                }
-                return null;
-              }} />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-        </Card.Body>
-      </Card> */}
-
       <Card className="shadow">
         <Card.Header as="h5" >Summary of Physical Examination</Card.Header>
         <Card.Body>

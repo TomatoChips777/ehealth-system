@@ -5,14 +5,21 @@ import { PersonFill, FileEarmarkText, FileLock, Trash, Eye } from 'react-bootstr
 import FormatDate from '../extra/DateFormat';
 import { useNavigate } from 'react-router-dom';
 
-function Patients({handleLinkClick}) {
+function Patients({ handleLinkClick }) {
   const navigate = useNavigate(); 
   const [patients, setPatients] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [newPatient, setNewPatient] = useState({ name: '', age: '', gender: '', condition: '', contact: '' });
+  const [newPatient, setNewPatient] = useState({
+    name: '',
+    age: '',
+    gender: '',
+    contact: '',
+    birthdate: '',
+    medicalHistory: '',
+  });
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -39,11 +46,11 @@ function Patients({handleLinkClick}) {
   };
 
   // Filter patients based on search term
-  const filteredPatients = patients.filter(
-    (patient) =>
-      patient.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      patient.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+const filteredPatients = patients.filter(
+  (patient) =>
+    (patient.full_name && patient.full_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (patient.email && patient.email.toLowerCase().includes(searchTerm.toLowerCase()))
+);
 
   const totalPages = Math.ceil(filteredPatients.length / patientsPerPage);
 
@@ -61,12 +68,6 @@ function Patients({handleLinkClick}) {
   const handleViewDetails = (patient) => {
     navigate('/patient-details', { state: { patient } });
   };
-  
-
-  // Close the details modal
-  const closeDetails = () => {
-    setShowDetails(false);
-  };
 
   // Open the Add Patient Modal
   const handleAddPatient = () => {
@@ -82,7 +83,14 @@ function Patients({handleLinkClick}) {
   // Add a new patient
   const handleAddNewPatient = () => {
     setPatients([...patients, { ...newPatient, id: patients.length + 1 }]);
-    setNewPatient({ name: '', age: '', gender: '', condition: '', contact: '' });
+    setNewPatient({
+      name: '',
+      age: '',
+      gender: '',
+      contact: '',
+      birthdate: '',
+      medicalHistory: '',
+    });
     setShowModal(false);
   };
 
@@ -92,23 +100,20 @@ function Patients({handleLinkClick}) {
     setPatients(updatedPatients);
   };
 
-
   // Handle Prescription
   const handlePrescription = (patient) => {
-    // Placeholder function: Open Prescription Modal or navigate to Prescription page
-    // console.log("Prescription for patient:", patient.name);
     handleLinkClick('Prescriptions');
     navigate('/prescriptions', { state: { patient } });
-
   };
 
-  const handleConsultation = (patient) =>{
-      navigate('/consultation', { state: { patient } });
-  }
+  const handleConsultation = (patient) => {
+    navigate('/consultation', { state: { patient } });
+  };
 
   const handleAnnualReport = (patient) => {
     navigate('/annualreport', { state: { patient } });
   };
+
   return (
     <Container fluid>
       <Row>
@@ -144,9 +149,9 @@ function Patients({handleLinkClick}) {
                   {currentPatients.length > 0 ? (
                     currentPatients.map((patient) => (
                       <tr key={patient.id}>
-                        <td>{patient.student_id}</td>
+                        <td>{patient.id}</td>
                         <td>{patient.full_name}</td>
-                        <td>{FormatDate(patient.birthdate,false)}</td>
+                        <td>{FormatDate(patient.birthdate, false)}</td>
                         <td>{patient.gender}</td>
                         <td>{patient.email}</td>
                         <td className="text-center">
@@ -174,7 +179,6 @@ function Patients({handleLinkClick}) {
                           >
                             <PersonFill />
                           </Button>{' '}
-                          
                           <Button
                             variant="success"
                             size="sm"
@@ -222,6 +226,87 @@ function Patients({handleLinkClick}) {
           </Card>
         </Col>
       </Row>
+
+      {/* Add New Patient Modal */}
+      <Modal show={showModal} onHide={() => setShowModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Add New Patient</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Form.Group controlId="formPatientName">
+              <Form.Label>Name</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder="Enter patient's full name"
+                name="name"
+                value={newPatient.name}
+                onChange={handleChange}
+              />
+            </Form.Group>
+            <Form.Group controlId="formPatientAge">
+              <Form.Label>Age</Form.Label>
+              <Form.Control
+                type="number"
+                placeholder="Enter patient's age"
+                name="age"
+                value={newPatient.age}
+                onChange={handleChange}
+              />
+            </Form.Group>
+            <Form.Group controlId="formPatientGender">
+              <Form.Label>Gender</Form.Label>
+              <Form.Control
+                as="select"
+                name="gender"
+                value={newPatient.gender}
+                onChange={handleChange}
+              >
+                <option value="">Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </Form.Control>
+            </Form.Group>
+            <Form.Group controlId="formPatientContact">
+              <Form.Label>Contact</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder="Enter patient's contact number"
+                name="contact"
+                value={newPatient.contact}
+                onChange={handleChange}
+              />
+            </Form.Group>
+            <Form.Group controlId="formPatientBirthdate">
+              <Form.Label>Birthdate</Form.Label>
+              <Form.Control
+                type="date"
+                name="birthdate"
+                value={newPatient.birthdate}
+                onChange={handleChange}
+              />
+            </Form.Group>
+            <Form.Group controlId="formPatientHistory">
+              <Form.Label>Medical History</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                name="medicalHistory"
+                value={newPatient.medicalHistory}
+                onChange={handleChange}
+              />
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowModal(false)}>
+            Close
+          </Button>
+          <Button variant="primary" onClick={handleAddNewPatient}>
+            Add Patient
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </Container>
   );
 }
