@@ -5,7 +5,7 @@ const db = require('../config/db');
 // Get All Borrowed Items
 router.get('/', async (req, res) => {
     try {
-        const rows = await db.queryAsync(`SELECT a.*, a.complaint as chief_complaint ,p.full_name as student_name FROM appointments a JOIN patients p ON a.user_id = p.id ORDER BY created_at DESC;`);
+        const rows = await db.queryAsync(`SELECT a.*,p.student_id, a.complaint as chief_complaint ,p.full_name as student_name FROM appointments a JOIN patients p ON a.user_id = p.id ORDER BY created_at DESC;`);
         return res.json(rows);
     } catch (err) {
         console.error("Error fetching all borrow records:", err);
@@ -14,70 +14,30 @@ router.get('/', async (req, res) => {
 });
 
 // Borrow Request (for users)
-router.post('/create-borrow-request', async (req, res) => {
+router.post('/post-appointment', async (req, res) => {
     const {
-        borrower,
-        email,
-        department,
-        item,
-        description,
-        returned_date,
+        complaint,
+        time,
+        date,
     } = req.body;
+    console.log(req.body);
 
-    if (!borrower || !email || !department || !item || !returned_date) {
+    if ( !complaint || !time || !date ) {
         return res.status(400).json({ success: false, message: "Missing required fields" });
     }
 
     const query = `
-        INSERT INTO borrowed_items
-        (borrower_name, email, department, item_name, description, returned_date)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO appointments
+        (user_id, complaint, time, date)
+        VALUES (?, ? ,?, ?)
     `;
-    const values = [borrower, email, department, item, description || '', returned_date || null];
+    const values = [1, complaint, time, date];
 
     try {
         const result = await db.queryAsync(query, values);
-
-        const newBorrow = {
-            id: result.insertId,
-            borrower,
-            email,
-            department,
-            item,
-            description,
-            returned_date,
-        };
-
-        // Step 1: Create a new notification
-        const notifMsg = `${borrower} from ${department} submitted a borrow request for "${item}".`;
-        const notifResult = await db.queryAsync(
-            'INSERT INTO notifications (message, title) VALUES (?, "Borrowing")',
-            [notifMsg]
-        );
-        const notifId = notifResult.insertId;
-
-        // Step 2: Get all admins and staff
-        const receivers = await db.queryAsync(
-            'SELECT id FROM tbl_users WHERE role="admin" OR role="staff"'
-        );
-
-        // Step 3: Insert one notification_receiver per admin/staff user
-        const receiverValues = receivers.map(user => [notifId, user.id, false]);  // Adding `false` for unread status
-        await db.queryAsync(
-            'INSERT INTO notification_receivers (notification_id, user_id, is_read) VALUES ?',
-            [receiverValues]
-        );
-
-        // Emit events if needed
-        req.io.emit('updateBorrowing');
-        req.io.emit('update');
-        req.io.emit('updateNotifications');
-        req.io.emit('createdBorrow', newBorrow);
-
         res.json({
             success: true,
             message: 'Borrow record and notification created successfully',
-            borrowId: result.insertId
         });
 
     } catch (err) {
@@ -86,6 +46,36 @@ router.post('/create-borrow-request', async (req, res) => {
     }
 });
 
+router.put('/update-appointment:/id', async (req, res) => {
+    const { id } = req.params;
+    const {
+        complaint,
+        time,
+        date,
+    } = req.body;
+    console.log(req.body);
+
+    if ( !complaint || !time || !date ||!id ) {
+        return res.status(400).json({ success: false, message: "Missing required fields" });
+    }
+
+    const query = `
+        UPDATE appointments SET complaint = ?, time = ?, date = ? WHERE id = ?
+    `;
+    const values = [complaint, time, date, id];
+
+    try {
+        const result = await db.queryAsync(query, values);
+        res.json({
+            success: true,
+            message: ' record and notification created successfully',
+        });
+
+    } catch (err) {
+        console.error("Error creating borrow record or notification:", err);
+        res.status(500).json({ success: false, message: 'Failed to create borrow record or notification' });
+    }
+});
 
 // Borrow Record (for admins/staff)
 router.post('/create-borrow', async (req, res) => {
