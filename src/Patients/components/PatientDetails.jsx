@@ -171,13 +171,13 @@ import CalculateAge from '../../extra/CalculateAge';
 import FormatDate from '../../extra/DateFormat';
 import { useNavigate } from 'react-router-dom';
 function PatientDetails() {
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
   const location = useLocation();
   const { patient } = location.state || {};
   const [exam, setExam] = useState({});
   const [findings, setFindings] = useState([]);
   const [showOldExam, setShowOldExam] = useState(false); // Track if we show the old or new exam
-  
+
   const bodyParts = [
     'Skin', 'Lungs', 'Nose', 'Heart', 'Mouth', 'Abdomen', 'Pharynx', 'Rectum',
     'Tonsils', 'Genitalia', 'Gums', 'Spine', 'Lymph nodes', 'Arms', 'Neck',
@@ -185,39 +185,44 @@ function PatientDetails() {
   ];
 
   const [exams, setExams] = useState([]);
-const [selectedExamId, setSelectedExamId] = useState(null);
+  const [selectedExamId, setSelectedExamId] = useState(null);
 
-const fetchAnnualPhysicalExams = async () => {
-  try {
-    const response = await axios.get(`${import.meta.env.VITE_GET_ANNUAL_PHYSICAL_EXAM_BY_ID}/${patient?.id}`);
-    const allExams = response.data.exam || [];
-    setExams(allExams);
-    if (allExams.length > 0) {
-      const latest = allExams[0];
-      setSelectedExamId(latest.id);
-      setExam(latest);
-      setFindings(Array.isArray(latest.findings) ? latest.findings : [latest.findings]);
-    }
-  } catch (error) {
-    console.error('Error fetching annual physical exams:', error);
-  }
-};
 
   useEffect(() => {
-  //   const fetchAnnualPhysicalExams = async () => {
-  //     try {
-  //       // Fetch both old and new exams (you might want to tweak the API endpoint accordingly)
-  //       const response = await axios.get(`${import.meta.env.VITE_GET_ANNUAL_PHYSICAL_EXAM_BY_ID}/${patient?.id}`);
-  //       const examData = response.data.exam || {};
-  //       setExam(examData);
-  //       setFindings(Array.isArray(examData.findings) ? examData.findings : [examData.findings]);
-  //     } catch (error) {
-  //       console.error('Error fetching annual physical exams:', error);
-  //     }
-  //   };
+    const fetchAnnualPhysicalExams = async () => {
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_GET_ANNUAL_PHYSICAL_EXAM_BY_ID}/${patient?.id}`);
+        const allExams = response.data.exam || [];
+
+        setExams(allExams);
+
+        if (allExams.length > 0) {
+          const latest = allExams[0];
+          setSelectedExamId(latest.id);
+          setExam(latest);
+          setFindings(Array.isArray(latest.findings) ? latest.findings : []);
+        }
+
+      } catch (error) {
+        console.error('Error fetching annual physical exams:', error);
+      }
+    };
 
     fetchAnnualPhysicalExams();
   }, [patient?.id]);
+
+
+  const handleExamChange = (e) => {
+    const selectedId = parseInt(e.target.value);
+    setSelectedExamId(selectedId);
+  
+    const selected = exams.find(exam => exam.id === selectedId);
+    if (selected) {
+      setExam(selected);
+      setFindings(Array.isArray(selected.findings) ? selected.findings : []);
+    }
+  };
+  
 
   const toggleExam = () => {
     setShowOldExam(prevState => !prevState);
@@ -226,20 +231,14 @@ const fetchAnnualPhysicalExams = async () => {
   const handleAnnualReport = (basic_info) => {
     navigate('/annualreport', { state: { basic_info } });
   };
-  const handleEditAnualReport = (patient) =>{
-   navigate('/annualreport', {state: { patient }});
+  const handleEditAnualReport = (data) => {
+    const patient = { ...data, exams };
+
+  navigate('/annualreport', { state: { patient } });
+    console.log(patient);
   };
 
-  const handleExamChange = (e) => {
-    const selectedId = e.target.value;
-    setSelectedExamId(selectedId);
-    const selected = exams.find(exam => exam.id === selectedId);
-    if (selected) {
-      setExam(selected);
-      setFindings(Array.isArray(selected.findings) ? selected.findings : [selected.findings]);
-    }
-  };
-  
+
   const safePatient = patient || {};
   const safeExam = exam || {};
   const safeFindings = findings || [];
@@ -250,15 +249,13 @@ const fetchAnnualPhysicalExams = async () => {
         <Card.Header as="h4" className="d-flex align-items-center gap-2 justify-content-between">
           <PersonFill size={28} />
           {safePatient.full_name}'s Medical Overview
-          <div className="">
-          <Button variant='success' size='sm' className='me-1' onClick={()=> handleAnnualReport(patient)}>Create new annual report</Button>
-          <Button variant='warning' size='sm' onClick={()=> handleEditAnualReport(patient)}>Edit</Button>
-
-          <div className="mb-3">
-  <label htmlFor="examSelect"><strong>Select Annual Exam:</strong></label>
+          <div className="mb-2">
+  <label htmlFor="examSelect" className="form-label small fw-semibold">
+    Select Annual Exam:
+  </label>
   <select
     id="examSelect"
-    className="form-select"
+    className="form-select form-select-sm"
     value={selectedExamId || ''}
     onChange={handleExamChange}
   >
@@ -270,7 +267,12 @@ const fetchAnnualPhysicalExams = async () => {
   </select>
 </div>
 
+          <div className="">
+            <Button variant='success' size='sm' className='me-1' onClick={() => handleAnnualReport(patient)}>Create new annual report</Button>
+            <Button variant='warning' size='sm' onClick={() => handleEditAnualReport(patient)}>Edit</Button>
+           
           </div>
+          
         </Card.Header>
         <Card.Body>
           <Row className="align-items-center">
@@ -328,7 +330,7 @@ const fetchAnnualPhysicalExams = async () => {
               </Row>
             </Col>
           </Row>
-          <hr/>
+          <hr />
           <Table bordered responsive className="mb-3">
             <tbody>
               <tr><th>Vision OD</th><td>{safeExam.vision_od}</td></tr>

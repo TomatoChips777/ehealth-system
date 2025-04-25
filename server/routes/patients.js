@@ -165,7 +165,7 @@ router.put('/update-annual-physical-exam/:id', async (req, res) => {
     }
 });
 
-router.get('/annual-physical-exam/:patient_id', async (req, res) => {
+router.get('/annual-physical-exam-2/:patient_id', async (req, res) => {
     const { patient_id } = req.params;
 
     if (!patient_id) {
@@ -203,5 +203,44 @@ router.get('/annual-physical-exam/:patient_id', async (req, res) => {
         res.status(500).json({ success: false, message: 'Error fetching data' });
     }
 });
+
+router.get('/annual-physical-exam/:patient_id', async (req, res) => {
+    const { patient_id } = req.params;
+
+    if (!patient_id) {
+        return res.status(400).json({ success: false, message: 'Patient ID is required' });
+    }
+
+    const examQuery = `
+        SELECT * FROM annual_physical_exams 
+        WHERE patient_id = ? 
+        ORDER BY date_examined DESC
+    `;
+
+    try {
+        const examResults = await runQuery(examQuery, [patient_id]);
+
+        // Fetch findings for each exam
+        const examsWithFindings = await Promise.all(
+            examResults.map(async (exam) => {
+                const findingsQuery = `SELECT * FROM physical_exam_findings WHERE exam_id = ?`;
+                const findings = await runQuery(findingsQuery, [exam.id]);
+                return {
+                    ...exam,
+                    findings: findings || []
+                };
+            })
+        );
+
+        res.json({
+            success: true,
+            exam: examsWithFindings
+        });
+    } catch (err) {
+        console.error("Error fetching physical exam details:", err);
+        res.status(500).json({ success: false, message: 'Error fetching data' });
+    }
+});
+
 
 module.exports = router;

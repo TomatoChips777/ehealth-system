@@ -287,7 +287,7 @@ function AnnualPhysicalExamForm() {
       return;
     }
     try {
-      const response = await axios.get(`${import.meta.env.VITE_GET_ANNUAL_PHYSICAL_EXAM_BY_ID}/${patient?.id}`);
+      const response = await axios.get(`${import.meta.env.VITE_GET_ANNUAL_PHYSICAL_EXAM_BY_ID_2}/${patient?.id}`);
       const examData = response.data.exam;
 
       // Check if exam data exists
