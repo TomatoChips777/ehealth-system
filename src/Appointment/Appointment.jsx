@@ -76,16 +76,16 @@ const AppointmentPage = () => {
       alert('Please select a weekday');
     }
   };
-  
+
   // Ensure the displayed date uses local timezone formatting
   const formatLocalDate = (date) => {
     const localDate = new Date(date);
     localDate.setMinutes(localDate.getMinutes() - localDate.getTimezoneOffset());
-    return localDate.toISOString().split('T')[0]; 
+    return localDate.toISOString().split('T')[0];
   };
 
 
-  const handleBookAppointment = () => {
+  const handleBookAppointment = async () => {
     if (!selectedDate || !selectedTime || !studentName || !complaint) {
       alert('Please fill in all fields');
       return;
@@ -99,15 +99,19 @@ const AppointmentPage = () => {
       time: selectedTime,
       complaint,
     };
+    try {
+      const response = await axios.post(`${import.meta.env.VITE_POST_APPOINTMENT}`, newAppointment);
+      fetchAppointments();
+      // Reset form and close modal
+      setStudentName('');
+      setComplaint('');
+      setSelectedDate(null);
+      setSelectedTime('');
+      setShowModal(false);
+    } catch (error) {
 
-    setAppointments([...appointments, newAppointment]);
+    }
 
-    // Reset form and close modal
-    setStudentName('');
-    setComplaint('');
-    setSelectedDate(null);
-    setSelectedTime('');
-    setShowModal(false);
   };
 
   const handleRescheduleAppointment = async () => {
@@ -125,8 +129,8 @@ const AppointmentPage = () => {
     };
     console.log(updatedAppointment);
 
-    
-    try{
+
+    try {
       const response = await axios.put(`${import.meta.env.VITE_UPDATE_APPOINTMENT}/${currentAppointment.id}`, updatedAppointment);
       setAppointments(appointments.map(app => app.id === currentAppointment.id ? updatedAppointment : app));
       setStudentName('');
@@ -134,12 +138,12 @@ const AppointmentPage = () => {
       setSelectedDate(null);
       setSelectedTime('');
       setShowRescheduleModal(false);
-    
-    }catch(error){
+      console.log("Test");
+    } catch (error) {
       setShowRescheduleModal(false);
       console.log(error);
     }
-    
+
   };
 
 
@@ -150,54 +154,54 @@ const AppointmentPage = () => {
     setSelectedDate(new Date(appointment.date));
     setSelectedTime(appointment.time);
     setShowRescheduleModal(true);
-};
+  };
 
-const calculateAvailableTimes = (date, appointmentToExclude = null) => {
-  const formattedDate = date.toISOString().split('T')[0];
+  const calculateAvailableTimes = (date, appointmentToExclude = null) => {
+    const formattedDate = date.toISOString().split('T')[0];
 
-  // Filter out the current appointment's time from available times when rescheduling
-  const takenTimes = appointments
-    .filter(app => formatDateLocal(app.date) === formattedDate && app.id !== (appointmentToExclude ? appointmentToExclude.id : null))
-    .map(app => app.time);
+    // Filter out the current appointment's time from available times when rescheduling
+    const takenTimes = appointments
+      .filter(app => formatDateLocal(app.date) === formattedDate && app.id !== (appointmentToExclude ? appointmentToExclude.id : null))
+      .map(app => app.time);
 
-  return timeSlots.filter(slot => !takenTimes.includes(slot));
-};
+    return timeSlots.filter(slot => !takenTimes.includes(slot));
+  };
 
-useEffect(() => {
-  if (selectedDate) {
-    setAvailableTimes(calculateAvailableTimes(selectedDate, currentAppointment));  // Pass currentAppointment to exclude its time
-    if (!currentAppointment) {
-      setSelectedTime('');
-    } else {
-      setSelectedTime(currentAppointment.time);  // Ensure the selected time is set correctly
+  useEffect(() => {
+    if (selectedDate) {
+      setAvailableTimes(calculateAvailableTimes(selectedDate, currentAppointment));  // Pass currentAppointment to exclude its time
+      if (!currentAppointment) {
+        setSelectedTime('');
+      } else {
+        setSelectedTime(currentAppointment.time);  // Ensure the selected time is set correctly
+      }
     }
-  }
-}, [selectedDate, appointments, currentAppointment]);
+  }, [selectedDate, appointments, currentAppointment]);
 
 
 
-const filteredAppointments = useMemo(() => {
-  return appointments.filter(appointment => {
-    const query = searchQuery.toLowerCase();
-    return (
-      appointment.student_name.toLowerCase().includes(query) ||
-      appointment.complaint.toLowerCase().includes(query) ||
-      appointment.student_id.toLowerCase().includes(query) ||
-      formatDateLocal(appointment.date).includes(query)
-    );
-  });
-}, [appointments, searchQuery]);
+  const filteredAppointments = useMemo(() => {
+    return appointments.filter(appointment => {
+      const query = searchQuery.toLowerCase();
+      return (
+        appointment.student_name.toLowerCase().includes(query) ||
+        appointment.complaint.toLowerCase().includes(query) ||
+        appointment.student_id.toLowerCase().includes(query) ||
+        formatDateLocal(appointment.date).includes(query)
+      );
+    });
+  }, [appointments, searchQuery]);
 
-const [currentPage, setCurrentPage] = useState(1);
-const appointmentsPerPage = 10;
+  const [currentPage, setCurrentPage] = useState(1);
+  const appointmentsPerPage = 10;
 
-// Calculate indices
-const indexOfLast = currentPage * appointmentsPerPage;
-const indexOfFirst = indexOfLast - appointmentsPerPage;
-const currentAppointments = filteredAppointments.slice(indexOfFirst, indexOfLast);
+  // Calculate indices
+  const indexOfLast = currentPage * appointmentsPerPage;
+  const indexOfFirst = indexOfLast - appointmentsPerPage;
+  const currentAppointments = filteredAppointments.slice(indexOfFirst, indexOfLast);
 
-// Page numbers for navigation
-const totalPages = Math.ceil(filteredAppointments.length / appointmentsPerPage);
+  // Page numbers for navigation
+  const totalPages = Math.ceil(filteredAppointments.length / appointmentsPerPage);
 
   return (
     <Container fluid>

@@ -46,7 +46,8 @@ router.post('/post-appointment', async (req, res) => {
     }
 });
 
-router.put('/update-appointment:/id', async (req, res) => {
+router.put('/update-appointment/:id', async (req, res) => {
+
     const { id } = req.params;
     const {
         complaint,
