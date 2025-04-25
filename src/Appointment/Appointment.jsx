@@ -1,86 +1,136 @@
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Table, Modal, Form, Badge } from 'react-bootstrap';
+import { Card, Button, Table, Modal, Form } from 'react-bootstrap';
 import FormatDate from '../extra/DateFormat';
 
 const AppointmentPage = () => {
   const doctorSchedule = [
-    '08:30 AM', '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', 
-    '11:30 AM', '12:00 PM', '12:30 PM', '01:00 PM', '01:30 PM', '02:00 PM', 
+    '08:30 AM', '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM',
+    '11:30 AM', '12:00 PM', '12:30 PM', '01:00 PM', '01:30 PM', '02:00 PM',
     '02:30 PM', '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM',
   ];
+
   const [appointments, setAppointments] = useState([]);
-  // const [appointments, setAppointments] = useState([
-  //   { id: 1, student_name: 'John Doe', time: '09:00 AM', chief_complaint: 'Headache', status: 'pending' },
-  //   { id: 2, student_name: 'Jane Smith', time: '09:30 AM', chief_complaint: 'Fever', status: 'approved' }
-  // ]);
-
-  const fetchAppointments = async ()=>{
-    try{
-
-      const response = await axios.get(`${import.meta.env.VITE_GET_APPOINTMENTS}`);
-      setAppointments(response.data);
-    }catch(error){
-
-    }
-  };
-
-  useEffect(() =>{
-    fetchAppointments();
-  },[]);
-
   const [showModal, setShowModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [newAppointment, setNewAppointment] = useState({
     student_name: '',
     chief_complaint: '',
+    time: '',
+    date: '',
+  });
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [rescheduleData, setRescheduleData] = useState({
+    id: null,
+    date: '',
     time: ''
   });
+  const fetchAppointments = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_GET_APPOINTMENTS}`);
+      setAppointments(response.data);
+    } catch (error) {
+      console.error('Error fetching appointments:', error);
+    }
+  };
 
-  // Handle input changes in the appointment form
+  useEffect(() => {
+    fetchAppointments();
+  }, []);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewAppointment((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Add new appointment
+  const handleDateChange = (e) => {
+    const selectedDate = new Date(e.target.value);
+    const today = new Date();
+    const day = selectedDate.getDay();
+
+    if (day === 0 || day === 6) {
+      alert('Weekends are not allowed. Please select a weekday.');
+      return;
+    }
+
+    if (selectedDate < new Date(today.toDateString())) {
+      alert('You cannot select a past date.');
+      return;
+    }
+
+    setNewAppointment((prev) => ({ ...prev, date: e.target.value, time: '' }));
+  };
+
   const handleAddAppointment = () => {
-    const nextAvailableSlot = getNextAvailableSlot();
-    if (nextAvailableSlot) {
-      const newAppointmentData = {
-        id: appointments.length + 1,
-        student_name: newAppointment.student_name,
-        chief_complaint: newAppointment.chief_complaint,
-        time: nextAvailableSlot,
-        status: 'pending',
-      };
-      setAppointments([...appointments, newAppointmentData]);
-      setShowModal(false); // Close the modal after adding the appointment
-    } else {
-      alert('No available slots.');
+    const { student_name, chief_complaint, date, time } = newAppointment;
+
+    if (!date || !time || !student_name || !chief_complaint) {
+      alert('Please fill in all fields.');
+      return;
     }
+
+    const newAppointmentData = {
+      id: appointments.length + 1,
+      student_name,
+      chief_complaint,
+      time,
+      date,
+      status: 'pending',
+    };
+
+    setAppointments([...appointments, newAppointmentData]);
+    setShowModal(false);
+    setNewAppointment({ student_name: '', chief_complaint: '', time: '', date: '' });
   };
 
-  // Get next available slot
-  const getNextAvailableSlot = () => {
-    const bookedSlots = appointments.map((appt) => appt.time);
-    const availableSlots = doctorSchedule.filter((slot) => !bookedSlots.includes(slot));
-    return availableSlots.length > 0 ? availableSlots[0] : null;
-  };
+  // const handleReschedule = (appointment) => {
+  //   const availableSlots = doctorSchedule.filter(
+  //     (slot) =>
+  //       !appointments.some(
+  //         (appt) => appt.date === appointment.date && appt.time === slot
+  //       )
+  //   );
 
-  // Handle reschedule (to modify appointment time)
+  //   const newTime = prompt(
+  //     `Available slots for ${FormatDate(appointment.date, false)}:\n` +
+  //       availableSlots.join('\n') +
+  //       `\n\nEnter new time exactly as shown (e.g., 10:30 AM):`
+  //   );
+
+  //   if (newTime && availableSlots.includes(newTime)) {
+  //     const updatedAppointments = appointments.map((appt) =>
+  //       appt.id === appointment.id ? { ...appt, time: newTime } : appt
+  //     );
+  //     setAppointments(updatedAppointments);
+  //   } else if (newTime) {
+  //     alert('Invalid or already booked slot.');
+  //   }
+  // };
+
   const handleReschedule = (appointment) => {
-    const nextAvailableSlot = getNextAvailableSlot();
-    if (nextAvailableSlot) {
-      const updatedAppointments = appointments.map((appt) =>
-        appt.id === appointment.id ? { ...appt, time: nextAvailableSlot } : appt
-      );
-      setAppointments(updatedAppointments);
-    } else {
-      alert('No available slots for rescheduling.');
-    }
+    setRescheduleData({
+      id: appointment.id,
+      date: appointment.date,
+      time: appointment.time
+    });
+    setShowRescheduleModal(true);
+  };
+  const handleRescheduleInputChange = (e) => {
+    const { name, value } = e.target;
+    setRescheduleData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleSaveReschedule = () => {
+    const updatedAppointments = appointments.map((appt) =>
+      appt.id === rescheduleData.id
+        ? { ...appt, date: rescheduleData.date, time: rescheduleData.time }
+        : appt
+    );
+    setAppointments(updatedAppointments);
+    setShowRescheduleModal(false);
+  };
+  
+  
   return (
     <>
       <Card className="mb-4">
@@ -131,7 +181,7 @@ const AppointmentPage = () => {
                       variant="danger"
                       size="sm"
                       className="ms-2"
-                      onClick={() => handleReschedule(appointment)}
+                      onClick={() => alert('Appointment cancelled')}
                     >
                       Cancel
                     </Button>
@@ -150,7 +200,17 @@ const AppointmentPage = () => {
         </Modal.Header>
         <Modal.Body>
           <Form>
-            <Form.Group controlId="formStudentName">
+            <Form.Group controlId="formDate">
+              <Form.Label>Select Date (Weekdays Only)</Form.Label>
+              <Form.Control
+                type="date"
+                name="date"
+                value={newAppointment.date}
+                onChange={handleDateChange}
+                min={new Date().toISOString().split('T')[0]}
+              />
+            </Form.Group>
+            <Form.Group controlId="formStudentName" className="mt-3">
               <Form.Label>Student Name</Form.Label>
               <Form.Control
                 type="text"
@@ -159,7 +219,7 @@ const AppointmentPage = () => {
                 onChange={handleInputChange}
               />
             </Form.Group>
-            <Form.Group controlId="formChiefComplaint">
+            <Form.Group controlId="formChiefComplaint" className="mt-3">
               <Form.Label>Chief Complaint</Form.Label>
               <Form.Control
                 type="text"
@@ -168,14 +228,29 @@ const AppointmentPage = () => {
                 onChange={handleInputChange}
               />
             </Form.Group>
-            <Form.Group controlId="formTime">
-              <Form.Label>Time Slot</Form.Label>
-              <Form.Control
-                type="text"
+            <Form.Group controlId="formTime" className="mt-3">
+              <Form.Label>Select Time Slot</Form.Label>
+              <Form.Select
                 name="time"
-                value={getNextAvailableSlot()}
-                readOnly
-              />
+                value={newAppointment.time}
+                onChange={handleInputChange}
+                disabled={!newAppointment.date}
+              >
+                <option value="">Select a time</option>
+                {doctorSchedule
+                  .filter(
+                    (slot) =>
+                      !appointments.some(
+                        (appt) =>
+                          appt.date === newAppointment.date && appt.time === slot
+                      )
+                  )
+                  .map((slot) => (
+                    <option key={slot} value={slot}>
+                      {slot}
+                    </option>
+                  ))}
+              </Form.Select>
             </Form.Group>
           </Form>
         </Modal.Body>
@@ -188,6 +263,60 @@ const AppointmentPage = () => {
           </Button>
         </Modal.Footer>
       </Modal>
+      <Modal show={showRescheduleModal} onHide={() => setShowRescheduleModal(false)}>
+  <Modal.Header closeButton>
+    <Modal.Title>Reschedule Appointment</Modal.Title>
+  </Modal.Header>
+  <Modal.Body>
+    <Form>
+      <Form.Group controlId="rescheduleDate">
+        <Form.Label>Select New Date</Form.Label>
+        <Form.Control
+          type="date"
+          name="date"
+          value={rescheduleData.date}
+          onChange={handleRescheduleInputChange}
+          min={new Date().toISOString().split('T')[0]}
+        />
+      </Form.Group>
+      <Form.Group controlId="rescheduleTime" className="mt-3">
+        <Form.Label>Select New Time Slot</Form.Label>
+        <Form.Select
+          name="time"
+          value={rescheduleData.time}
+          onChange={handleRescheduleInputChange}
+          disabled={!rescheduleData.date}
+        >
+          <option value="">Select a time</option>
+          {doctorSchedule
+            .filter(
+              (slot) =>
+                !appointments.some(
+                  (appt) =>
+                    appt.date === rescheduleData.date &&
+                    appt.time === slot &&
+                    appt.id !== rescheduleData.id // don't block self
+                )
+            )
+            .map((slot) => (
+              <option key={slot} value={slot}>
+                {slot}
+              </option>
+            ))}
+        </Form.Select>
+      </Form.Group>
+    </Form>
+  </Modal.Body>
+  <Modal.Footer>
+    <Button variant="secondary" onClick={() => setShowRescheduleModal(false)}>
+      Cancel
+    </Button>
+    <Button variant="primary" onClick={handleSaveReschedule}>
+      Save Changes
+    </Button>
+  </Modal.Footer>
+</Modal>
+
     </>
   );
 };
