@@ -45,7 +45,7 @@ const Charts = ({ type, data }) => {
     }, {});
   };
 
-  if (type === 'borrowingFrequency') {
+  if (type === 'studentgFrequency') {
     const groupedData = groupByTimeframe(data, 'borrow_date');
     const chartData = Object.entries(groupedData)
       .map(([key, count]) => ({ date: key, count }))
