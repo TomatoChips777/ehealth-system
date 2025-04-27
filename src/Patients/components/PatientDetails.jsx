@@ -1,109 +1,168 @@
 // import React, { useState, useEffect } from 'react';
-// import { Card, Container, Row, Col, Badge, ListGroup, Table, Image } from 'react-bootstrap';
+// import { Card, Container, Row, Col, Badge, ListGroup, Table, Image, Button } from 'react-bootstrap';
 // import { PersonFill } from 'react-bootstrap-icons';
 // import axios from 'axios';
-// import { useLocation } from 'react-router-dom';
+// import { useLocation, useNavigate } from 'react-router-dom';
 // import CalculateAge from '../../extra/CalculateAge';
 // import FormatDate from '../../extra/DateFormat';
+// import StudentLogs from './StudentLogs';
 
 // function PatientDetails() {
-//   const location = useLocation();
-//   const { patient } = location.state || {};
-//   const [exam, setExam] = useState({});
-//   const [findings, setFindings] = useState([]);
+// const navigate = useNavigate();
+// const location = useLocation();
+// const { patient } = location.state || {};
 
-//   const bodyParts = [
-//     'Skin', 'Lungs', 'Nose', 'Heart', 'Mouth', 'Abdomen', 'Pharynx', 'Rectum',
-//     'Tonsils', 'Genitalia', 'Gums', 'Spine', 'Lymph nodes', 'Arms', 'Neck',
-//     'Legs', 'Chest', 'Feet'
-//   ];
+// const [exam, setExam] = useState({});
+// const [findings, setFindings] = useState([]);
+// const [studentLogs, setStudentLogs] = useState([]);
+// const [exams, setExams] = useState([]);
+// const [selectedExamId, setSelectedExamId] = useState(null);
+
+// const bodyParts = [
+//   'Skin', 'Lungs', 'Nose', 'Heart', 'Mouth', 'Abdomen', 'Pharynx', 'Rectum',
+//   'Tonsils', 'Genitalia', 'Gums', 'Spine', 'Lymph nodes', 'Arms', 'Neck',
+//   'Legs', 'Chest', 'Feet'
+// ];
 
 
-//   useEffect(() => {
-//     const fetchAnnualPhysicalExams = async () => {
-//       try {
-//         const response = await axios.get(`${import.meta.env.VITE_GET_ANNUAL_PHYSICAL_EXAM_BY_ID}/${patient?.id}`);
-//         const examData = response.data.exam || {};
-//         setExam(examData);
-//         // Ensure findings are an array, even if it's a single object
-//         setFindings(Array.isArray(examData.findings) ? examData.findings : [examData.findings]);
-//       } catch (error) {
-//         console.error('Error fetching annual physical exams:', error);
+// useEffect(() => {
+//   const fetchData = async () => {
+//     try {
+//       const [examRes, logsRes] = await Promise.all([
+//         axios.get(`${import.meta.env.VITE_GET_ANNUAL_PHYSICAL_EXAM_BY_ID}/${patient?.user_id}`),
+//         axios.get(`${import.meta.env.VITE_GET_STUDENT_LOGS_BY_ID}/${patient?.user_id}`)
+//       ]);
+
+//       const allExams = examRes.data.exam || [];
+//       setExams(allExams);
+
+//       if (allExams.length > 0) {
+//         const latest = allExams[0];
+//         setSelectedExamId(latest.id);
+//         setExam(latest);
+//         setFindings(Array.isArray(latest.findings) ? latest.findings : []);
 //       }
-//     };
 
-//     fetchAnnualPhysicalExams();
-//   }, [patient?.id]);
+//       setStudentLogs(logsRes.data || []);
+//     } catch (error) {
+//       console.error('Error fetching data:', error);
+//     }
+//   };
 
-//   const safePatient = patient || [];
-//   const safeExam = exam || [];
-//   const safeFindings = findings || [];
+//   fetchData();
+// }, [patient?.user_id]);
+
+// const handleExamChange = (e) => {
+//   const selectedId = parseInt(e.target.value);
+//   setSelectedExamId(selectedId);
+
+//   const selected = exams.find(exam => exam.id === selectedId);
+//   if (selected) {
+//     setExam(selected);
+//     setFindings(Array.isArray(selected.findings) ? selected.findings : []);
+//   }
+// };
+
+// const handleAnnualReport = () => navigate('/annualreport', { state: { basic_info: patient } });
+// const handleEditAnualReport = () => navigate('/annualreport', { state: { patient: { ...patient, exams } } });
+
+// const safePatient = patient || {};
+// const safeExam = exam || {};
+// const safeFindings = findings || [];
 
 //   return (
-//     <Container>
-//       <Card className="mb-4 shadow">
-//         <Card.Header as="h4" className="d-flex align-items-center gap-2">
-//           <PersonFill size={28} />
-//           {safePatient.full_name}'s Medical Overview
+//     <Container className="pb-5">
+//       {/* Patient Basic Info */}
+//       <Card className="mb-4 shadow-sm">
+//         <Card.Header className="d-flex justify-content-between align-items-center">
+//           <div className="d-flex align-items-center gap-2">
+//             <PersonFill size={28} />
+//             <h5 className="mb-0">{safePatient.full_name}</h5>
+//           </div>
+//           <div className="d-flex gap-2">
+//           <div className="d-flex justify-content-end">
+//             <select
+//               className="form-select form-select-sm w-auto"
+//               value={selectedExamId || ''}
+//               onChange={handleExamChange}
+//             >
+//               {exams.map((e) => (
+//                 <option key={e.id} value={e.id}>
+//                   {FormatDate(e.date_examined, false)} - {e.physician || 'Physician'}
+//                 </option>
+//               ))}
+//             </select>
+//           </div>
+//             <Button size="sm" variant="success" onClick={handleAnnualReport}>New Report</Button>
+//             <Button size="sm" variant="warning" onClick={handleEditAnualReport}>Edit</Button>
+//           </div>
 //         </Card.Header>
+
 //         <Card.Body>
-//           <Row className="align-items-center">
+//           <Row className="mb-3">
 //             <Col md={3} className="text-center">
 //               <Image
 //                 src={safePatient.profile_pic}
 //                 roundedCircle
 //                 fluid
-//                 className="mb-3"
-//                 style={{ maxHeight: '120px' }}
+//                 style={{ maxHeight: '100px' }}
+//                 className="mb-2"
 //               />
-//               <div>
-//                 <strong>{safePatient.full_name}</strong>
-//               </div>
-//               <div className="text-muted">{safePatient.email}</div>
+//               <p className="fw-bold mb-0">{safePatient.full_name}</p>
+//               <small className="text-muted">{safePatient.email}</small>
 //             </Col>
+
 //             <Col md={9}>
 //               <Row>
 //                 <Col md={6}>
 //                   <ListGroup variant="flush">
-//                     <ListGroup.Item>
-//                       <strong>Student ID:</strong> {safePatient.student_id}
-//                     </ListGroup.Item>
-//                     <ListGroup.Item>
-//                       <strong>Age:</strong> {CalculateAge(safePatient.birthdate)}
-//                     </ListGroup.Item>
-//                     <ListGroup.Item>
-//                       <strong>Sex:</strong> {safePatient.sex}
-//                     </ListGroup.Item>
-//                     <ListGroup.Item>
-//                       <strong>Address:</strong> {safePatient.address}
-//                     </ListGroup.Item>
-//                     <ListGroup.Item>
-//                       <strong>Contact Number:</strong> {safePatient.contact_number}
-//                     </ListGroup.Item>
-//                     <ListGroup.Item>
-//                       <strong>Contact Person:</strong> {safePatient.contact_person}
-//                     </ListGroup.Item>
-//                     <ListGroup.Item>
-//                       <strong>Contact Person's Number:</strong> {safePatient.contact_person_number}
-//                     </ListGroup.Item>
+//                     <ListGroup.Item><strong>Student ID:</strong> {safePatient.student_id}</ListGroup.Item>
+//                     <ListGroup.Item><strong>Age:</strong> {CalculateAge(safePatient.birthdate)}</ListGroup.Item>
+//                     <ListGroup.Item><strong>Sex:</strong> {safePatient.sex}</ListGroup.Item>
+//                     <ListGroup.Item><strong>Address:</strong> {safePatient.address}</ListGroup.Item>
 //                   </ListGroup>
 //                 </Col>
 //                 <Col md={6}>
 //                   <ListGroup variant="flush">
-//                     <ListGroup.Item><strong>BP:</strong> {safeExam.bp}</ListGroup.Item>
-//                     <ListGroup.Item><strong>HR:</strong> {safeExam.heart_rate}</ListGroup.Item>
-//                     <ListGroup.Item><strong>RR:</strong> {safeExam.rr}</ListGroup.Item>
-//                     <ListGroup.Item><strong>Temp:</strong> {safeExam.temp}</ListGroup.Item>
-//                     <ListGroup.Item><strong>Height:</strong> {safeExam.height}</ListGroup.Item>
-//                     <ListGroup.Item><strong>Weight:</strong> {safeExam.weight}</ListGroup.Item>
-//                     <ListGroup.Item><strong>BMI:</strong> {safeExam.bmi}</ListGroup.Item>
+//                     <ListGroup.Item><strong>Contact No.:</strong> {safePatient.contact_number}</ListGroup.Item>
+//                     <ListGroup.Item><strong>Contact Person:</strong> {safePatient.contact_person}</ListGroup.Item>
+//                     <ListGroup.Item><strong>Contact Person No.:</strong> {safePatient.contact_person_number}</ListGroup.Item>
 //                   </ListGroup>
 //                 </Col>
 //               </Row>
 //             </Col>
 //           </Row>
-//           <hr/>
-//           <Table bordered responsive className="mb-3">
+
+//           {/* Exam Selection */}
+
+
+//           <hr />
+
+//           {/* Vitals */}
+//           <h6 className="text-muted mb-3">Vital Signs</h6>
+//           <Row>
+//             <Col md={6}>
+//               <ListGroup variant="flush">
+//                 <ListGroup.Item><strong>BP:</strong> {safeExam.bp}</ListGroup.Item>
+//                 <ListGroup.Item><strong>HR:</strong> {safeExam.heart_rate}</ListGroup.Item>
+//                 <ListGroup.Item><strong>RR:</strong> {safeExam.rr}</ListGroup.Item>
+//                 <ListGroup.Item><strong>Temp:</strong> {safeExam.temp}</ListGroup.Item>
+//               </ListGroup>
+//             </Col>
+//             <Col md={6}>
+//               <ListGroup variant="flush">
+//                 <ListGroup.Item><strong>Height:</strong> {safeExam.height}</ListGroup.Item>
+//                 <ListGroup.Item><strong>Weight:</strong> {safeExam.weight}</ListGroup.Item>
+//                 <ListGroup.Item><strong>BMI:</strong> {safeExam.bmi}</ListGroup.Item>
+//               </ListGroup>
+//             </Col>
+//           </Row>
+
+//           <hr />
+
+//           {/* Vision, Hearing, Medical Conditions */}
+//           <h6 className="text-muted mb-3">Other Health Information</h6>
+//           <Table bordered size="sm" responsive>
 //             <tbody>
 //               <tr><th>Vision OD</th><td>{safeExam.vision_od}</td></tr>
 //               <tr><th>Vision OS</th><td>{safeExam.vision_os}</td></tr>
@@ -115,8 +174,11 @@
 //             </tbody>
 //           </Table>
 
+//           <hr />
 
-//           <Table bordered responsive className="mb-3">
+//           {/* Body Parts Findings */}
+//           <h6 className="text-muted mb-3">Body Parts Findings</h6>
+//           <Table bordered size="sm" responsive>
 //             <thead>
 //               <tr>
 //                 <th>Body Part</th>
@@ -125,19 +187,15 @@
 //               </tr>
 //             </thead>
 //             <tbody>
-//               {bodyParts.map((bodyPart, index) => {
-//                 // Find the corresponding finding for the body part
-//                 const finding = safeFindings.find(finding => finding.body_part === bodyPart);
-
-//                 // If a finding is not found, set default values
+//               {bodyParts.map((part, idx) => {
+//                 const finding = safeFindings.find(f => f.body_part === part);
 //                 const status = finding ? finding.status : 'NA';
 //                 const notes = finding ? finding.notes : '-';
-
 //                 return (
-//                   <tr key={index}>
-//                     <td>{bodyPart}</td>
+//                   <tr key={idx}>
+//                     <td>{part}</td>
 //                     <td className="text-center">
-//                       <Badge bg={status === 'A' ? 'danger' : status === 'N' ? 'success' : 'secondary'} className="rounded-0">
+//                       <Badge bg={status === 'A' ? 'danger' : status === 'N' ? 'success' : 'secondary'}>
 //                         {status}
 //                       </Badge>
 //                     </td>
@@ -147,53 +205,71 @@
 //               })}
 //             </tbody>
 //           </Table>
+
+//           <hr />
+//           {/* Summary Section */}
+//           <h6 className="text-muted mb-3">Summary</h6>
 //           <p><strong>Remarks:</strong> {safeExam.remarks}</p>
 //           <p><strong>Assessment:</strong> {safeExam.assessment}</p>
 //           <p><strong>Recommendation:</strong> {safeExam.recommendation}</p>
-//           <div className='d-flex justify-content-between'>
-//           <p><strong>Date Examined:</strong> {FormatDate(safeExam.date_examined, false)} </p>
-//           <p><strong> Physician’s Signature:</strong> _____________________ </p>
+
+//           <div className="d-flex justify-content-between mt-3 mb-2">
+//             <small><strong>Date Examined:</strong> {FormatDate(safeExam.date_examined, false)}</small>
+//             <small><strong>Physician Signature:</strong> _____________________</small>
 //           </div>
+
+//           {/* Student Logs */}
+//           {studentLogs.length > 0 && (
+//             <>
+//               <StudentLogs logs={studentLogs} />
+//             </>
+//           )}
 //         </Card.Body>
 //       </Card>
 //     </Container>
 //   );
 // }
+
 // export default PatientDetails;
-
-
 import React, { useState, useEffect } from 'react';
-import { Card, Container, Row, Col, Badge, ListGroup, Table, Image, Button } from 'react-bootstrap';
+import { Card, Container, Row, Col, Badge, ListGroup, Table, Image, Button, ButtonGroup } from 'react-bootstrap';
 import { PersonFill } from 'react-bootstrap-icons';
 import axios from 'axios';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import CalculateAge from '../../extra/CalculateAge';
 import FormatDate from '../../extra/DateFormat';
-import { useNavigate } from 'react-router-dom';
+import StudentLogs from './StudentLogs';
+import StudentPrescriptions from './StudentPrescription';
+
 function PatientDetails() {
   const navigate = useNavigate();
   const location = useLocation();
   const { patient } = location.state || {};
+
+
   const [exam, setExam] = useState({});
   const [findings, setFindings] = useState([]);
-  const [showOldExam, setShowOldExam] = useState(false); // Track if we show the old or new exam
+  const [studentLogs, setStudentLogs] = useState([]);
+  const [studentPrescriptions, setStudentPrescriptions] = useState([]);
+  const [exams, setExams] = useState([]);
+  const [selectedExamId, setSelectedExamId] = useState(null);
+  const [viewMode, setViewMode] = useState('APE');
 
   const bodyParts = [
     'Skin', 'Lungs', 'Nose', 'Heart', 'Mouth', 'Abdomen', 'Pharynx', 'Rectum',
     'Tonsils', 'Genitalia', 'Gums', 'Spine', 'Lymph nodes', 'Arms', 'Neck',
     'Legs', 'Chest', 'Feet'
   ];
-
-  const [exams, setExams] = useState([]);
-  const [selectedExamId, setSelectedExamId] = useState(null);
-
-
   useEffect(() => {
-    const fetchAnnualPhysicalExams = async () => {
+    const fetchData = async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_GET_ANNUAL_PHYSICAL_EXAM_BY_ID}/${patient?.id}`);
-        const allExams = response.data.exam || [];
+        const [examRes, logsRes, prescriptionRes] = await Promise.all([
+          axios.get(`${import.meta.env.VITE_GET_ANNUAL_PHYSICAL_EXAM_BY_ID}/${patient?.user_id}`),
+          axios.get(`${import.meta.env.VITE_GET_STUDENT_LOGS_BY_ID}/${patient?.user_id}`),
+          axios.get(`${import.meta.env.VITE_GET_PRESCRIPTIONS_BY_USER}/${patient?.user_id}`)
+        ]);
 
+        const allExams = examRes.data.exam || [];
         setExams(allExams);
 
         if (allExams.length > 0) {
@@ -203,188 +279,219 @@ function PatientDetails() {
           setFindings(Array.isArray(latest.findings) ? latest.findings : []);
         }
 
+        setStudentLogs(logsRes.data || []);
+        setStudentPrescriptions(prescriptionRes.data || []);
+        
       } catch (error) {
-        console.error('Error fetching annual physical exams:', error);
+        console.error('Error fetching data:', error);
       }
     };
 
-    fetchAnnualPhysicalExams();
-  }, [patient?.id]);
-
+    fetchData();
+  }, [patient?.user_id]);
 
   const handleExamChange = (e) => {
     const selectedId = parseInt(e.target.value);
     setSelectedExamId(selectedId);
-  
+
     const selected = exams.find(exam => exam.id === selectedId);
     if (selected) {
       setExam(selected);
       setFindings(Array.isArray(selected.findings) ? selected.findings : []);
     }
   };
-  
-
-  const toggleExam = () => {
-    setShowOldExam(prevState => !prevState);
-  };
-
-  const handleAnnualReport = (basic_info) => {
-    navigate('/annualreport', { state: { basic_info } });
-  };
-  const handleEditAnualReport = (data) => {
-    const patient = { ...data, exams };
-
-  navigate('/annualreport', { state: { patient } });
-    console.log(patient);
-  };
-
+  const handleAnnualReport = () => navigate('/annualreport', { state: { basic_info: patient } });
+  const handleEditAnualReport = () => navigate('/annualreport', { state: { patient: { ...patient, exams } } });
 
   const safePatient = patient || {};
   const safeExam = exam || {};
   const safeFindings = findings || [];
 
   return (
-    <Container>
-      <Card className="mb-4 shadow">
-        <Card.Header as="h4" className="d-flex align-items-center gap-2 justify-content-between">
-          <PersonFill size={28} />
-          {safePatient.full_name}'s Medical Overview
-          <div className="mb-2">
-  <label htmlFor="examSelect" className="form-label small fw-semibold">
-    Select Annual Exam:
-  </label>
-  <select
-    id="examSelect"
-    className="form-select form-select-sm"
-    value={selectedExamId || ''}
-    onChange={handleExamChange}
-  >
-    {exams.map((e) => (
-      <option key={e.id} value={e.id}>
-        {FormatDate(e.date_examined, false)} - {e.physician || 'Physician'}
-      </option>
-    ))}
-  </select>
-</div>
-
-          <div className="">
-            <Button variant='success' size='sm' className='me-1' onClick={() => handleAnnualReport(patient)}>Create new annual report</Button>
-            <Button variant='warning' size='sm' onClick={() => handleEditAnualReport(patient)}>Edit</Button>
-           
+    <Container className="pb-5">
+      <Card className="mb-4 shadow-sm">
+        <Card.Header className="d-flex justify-content-between align-items-center">
+          <div className="d-flex align-items-center gap-2">
+            <PersonFill size={28} />
+            <h5 className="mb-0">{safePatient.full_name}</h5>
           </div>
-          
+          <div className="d-flex gap-2">
+            <ButtonGroup>
+              <Button variant={viewMode === 'APE' ? 'success' : 'outline-success'} onClick={() => setViewMode('APE')}>APE</Button>
+              <Button variant={viewMode === 'Logs' ? 'success' : 'outline-success'} onClick={() => setViewMode('Logs')}>Logs</Button>
+              <Button variant={viewMode === 'Prescriptions' ? 'success' : 'outline-success'} onClick={() => setViewMode('Prescriptions')}>Prescriptions</Button>
+            </ButtonGroup>
+          </div>
         </Card.Header>
+
         <Card.Body>
-          <Row className="align-items-center">
+          <Row className="mb-3">
             <Col md={3} className="text-center">
               <Image
                 src={safePatient.profile_pic}
                 roundedCircle
                 fluid
-                className="mb-3"
-                style={{ maxHeight: '120px' }}
+                style={{ maxHeight: '100px' }}
+                className="mb-2"
               />
-              <div>
-                <strong>{safePatient.full_name}</strong>
-              </div>
-              <div className="text-muted">{safePatient.email}</div>
+              <p className="fw-bold mb-0">{safePatient.full_name}</p>
+              <small className="text-muted">{safePatient.email}</small>
             </Col>
+
             <Col md={9}>
               <Row>
                 <Col md={6}>
                   <ListGroup variant="flush">
-                    <ListGroup.Item>
-                      <strong>Student ID:</strong> {safePatient.student_id}
-                    </ListGroup.Item>
-                    <ListGroup.Item>
-                      <strong>Age:</strong> {CalculateAge(safePatient.birthdate)}
-                    </ListGroup.Item>
-                    <ListGroup.Item>
-                      <strong>Sex:</strong> {safePatient.sex}
-                    </ListGroup.Item>
-                    <ListGroup.Item>
-                      <strong>Address:</strong> {safePatient.address}
-                    </ListGroup.Item>
-                    <ListGroup.Item>
-                      <strong>Contact Number:</strong> {safePatient.contact_number}
-                    </ListGroup.Item>
-                    <ListGroup.Item>
-                      <strong>Contact Person:</strong> {safePatient.contact_person}
-                    </ListGroup.Item>
-                    <ListGroup.Item>
-                      <strong>Contact Person's Number:</strong> {safePatient.contact_person_number}
-                    </ListGroup.Item>
+                    <ListGroup.Item><strong>Student ID:</strong> {safePatient.student_id}</ListGroup.Item>
+                    <ListGroup.Item><strong>Age:</strong> {CalculateAge(safePatient.birthdate)}</ListGroup.Item>
+                    <ListGroup.Item><strong>Sex:</strong> {safePatient.sex}</ListGroup.Item>
+                  <ListGroup.Item><strong>Course & Year:</strong> {safePatient.course} - {safePatient.year}</ListGroup.Item>
+
                   </ListGroup>
                 </Col>
                 <Col md={6}>
                   <ListGroup variant="flush">
-                    <ListGroup.Item><strong>BP:</strong> {safeExam.bp}</ListGroup.Item>
-                    <ListGroup.Item><strong>HR:</strong> {safeExam.heart_rate}</ListGroup.Item>
-                    <ListGroup.Item><strong>RR:</strong> {safeExam.rr}</ListGroup.Item>
-                    <ListGroup.Item><strong>Temp:</strong> {safeExam.temp}</ListGroup.Item>
-                    <ListGroup.Item><strong>Height:</strong> {safeExam.height}</ListGroup.Item>
-                    <ListGroup.Item><strong>Weight:</strong> {safeExam.weight}</ListGroup.Item>
-                    <ListGroup.Item><strong>BMI:</strong> {safeExam.bmi}</ListGroup.Item>
+                  <ListGroup.Item><strong>Address:</strong> {safePatient.address}</ListGroup.Item>
+                    <ListGroup.Item><strong>Contact No.:</strong> {safePatient.contact_number}</ListGroup.Item>
+                    <ListGroup.Item><strong>Contact Person:</strong> {safePatient.contact_person}</ListGroup.Item>
+                    <ListGroup.Item><strong>Contact Person No.:</strong> {safePatient.contact_person_number}</ListGroup.Item>
                   </ListGroup>
                 </Col>
               </Row>
             </Col>
           </Row>
-          <hr />
-          <Table bordered responsive className="mb-3">
-            <tbody>
-              <tr><th>Vision OD</th><td>{safeExam.vision_od}</td></tr>
-              <tr><th>Vision OS</th><td>{safeExam.vision_os}</td></tr>
-              <tr><th>Hearing (Right)</th><td>{safeExam.hearing_right}</td></tr>
-              <tr><th>Hearing (Left)</th><td>{safeExam.hearing_left}</td></tr>
-              <tr><th>Asthma History</th><td>{safeExam.asthma}</td></tr>
-              <tr><th>Allergies</th><td>{safeExam.allergies}</td></tr>
-              <tr><th>Medical Condition</th><td>{safeExam.medical_condition}</td></tr>
-            </tbody>
-          </Table>
 
-          <Table bordered responsive className="mb-3">
-            <thead>
-              <tr>
-                <th>Body Part</th>
-                <th className="text-center">Status</th>
-                <th>Notes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bodyParts.map((bodyPart, index) => {
-                const finding = safeFindings.find(finding => finding.body_part === bodyPart);
-                const status = finding ? finding.status : 'NA';
-                const notes = finding ? finding.notes : '-';
+          {viewMode === 'APE' && (
+            <>
+              <Card className="mb-4">
+                <Card.Header className="d-flex justify-content-between align-items-center">
+                  <h5 className="mb-0">Annual Physical Exam</h5>
+                  <div className="d-flex gap-2 align-items-center">
+                    <select
+                      className="form-select form-select-sm w-auto"
+                      value={selectedExamId || ''}
+                      onChange={handleExamChange}
+                    >
+                      {exams.map((e) => (
+                        <option key={e.id} value={e.id}>
+                          {FormatDate(e.date_examined, false)} - {e.physician || 'Physician'}
+                        </option>
+                      ))}
+                    </select>
+                    <Button size="sm" variant="success" onClick={handleAnnualReport}>
+                      New Report
+                    </Button>
+                    <Button size="sm" variant="warning" onClick={handleEditAnualReport}>
+                      Edit
+                    </Button>
+                  </div>
+                </Card.Header>
 
-                return (
-                  <tr key={index}>
-                    <td>{bodyPart}</td>
-                    <td className="text-center">
-                      <Badge bg={status === 'A' ? 'danger' : status === 'N' ? 'success' : 'secondary'} className="rounded-0">
-                        {status}
-                      </Badge>
-                    </td>
-                    <td>{notes}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </Table>
+                <Card.Body>
+                  {/* Vital Signs */}
+                  <h6 className="text-muted mb-3">Vital Signs</h6>
+                  <Row>
+                    <Col md={6}>
+                      <ListGroup variant="flush">
+                        <ListGroup.Item><strong>BP:</strong> {safeExam.bp}</ListGroup.Item>
+                        <ListGroup.Item><strong>HR:</strong> {safeExam.heart_rate}</ListGroup.Item>
+                        <ListGroup.Item><strong>RR:</strong> {safeExam.rr}</ListGroup.Item>
+                        <ListGroup.Item><strong>Temp:</strong> {safeExam.temp}</ListGroup.Item>
+                      </ListGroup>
+                    </Col>
+                    <Col md={6}>
+                      <ListGroup variant="flush">
+                        <ListGroup.Item><strong>Height:</strong> {safeExam.height}</ListGroup.Item>
+                        <ListGroup.Item><strong>Weight:</strong> {safeExam.weight}</ListGroup.Item>
+                        <ListGroup.Item><strong>BMI:</strong> {safeExam.bmi}</ListGroup.Item>
+                      </ListGroup>
+                    </Col>
+                  </Row>
 
-          <p><strong>Remarks:</strong> {safeExam.remarks}</p>
-          <p><strong>Assessment:</strong> {safeExam.assessment}</p>
-          <p><strong>Recommendation:</strong> {safeExam.recommendation}</p>
+                  <hr />
 
-          <div className='d-flex justify-content-between'>
-            <p><strong>Date Examined:</strong> {FormatDate(safeExam.date_examined, false)} </p>
-            <p><strong> Physician’s Signature:</strong> _____________________ </p>
-          </div>
+                  {/* Vision, Hearing, Medical Conditions */}
+                  <h6 className="text-muted mb-3">Other Health Information</h6>
+                  <Table bordered size="sm" responsive>
+                    <tbody>
+                      <tr><th>Vision OD</th><td>{safeExam.vision_od}</td></tr>
+                      <tr><th>Vision OS</th><td>{safeExam.vision_os}</td></tr>
+                      <tr><th>Hearing (Right)</th><td>{safeExam.hearing_right}</td></tr>
+                      <tr><th>Hearing (Left)</th><td>{safeExam.hearing_left}</td></tr>
+                      <tr><th>Asthma History</th><td>{safeExam.asthma}</td></tr>
+                      <tr><th>Allergies</th><td>{safeExam.allergies}</td></tr>
+                      <tr><th>Medical Condition</th><td>{safeExam.medical_condition}</td></tr>
+                    </tbody>
+                  </Table>
 
-          <Button variant="secondary" onClick={toggleExam}>
-            {showOldExam ? 'Show New Exam' : 'Show Old Exam'}
-          </Button>
+                  <hr />
 
+                  {/* Body Parts Findings */}
+                  <h6 className="text-muted mb-3">Body Parts Findings</h6>
+                  <Table bordered size="sm" responsive>
+                    <thead>
+                      <tr>
+                        <th>Body Part</th>
+                        <th className="text-center">Status</th>
+                        <th>Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bodyParts.map((part, idx) => {
+                        const finding = safeFindings.find(f => f.body_part === part);
+                        const status = finding ? finding.status : 'NA';
+                        const notes = finding ? finding.notes : '-';
+                        return (
+                          <tr key={idx}>
+                            <td>{part}</td>
+                            <td className="text-center">
+                              <Badge bg={status === 'A' ? 'danger' : status === 'N' ? 'success' : 'secondary'}>
+                                {status}
+                              </Badge>
+                            </td>
+                            <td>{notes}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </Table>
+
+                  <hr />
+
+                  {/* Summary */}
+                  <h6 className="text-muted mb-3">Summary</h6>
+                  <p><strong>Remarks:</strong> {safeExam.remarks}</p>
+                  <p><strong>Assessment:</strong> {safeExam.assessment}</p>
+                  <p><strong>Recommendation:</strong> {safeExam.recommendation}</p>
+
+                  <div className="d-flex justify-content-between mt-3">
+                    <small><strong>Date Examined:</strong> {FormatDate(safeExam.date_examined, false)}</small>
+                    <small><strong>Physician Signature:</strong> _____________________</small>
+                  </div>
+                </Card.Body>
+              </Card>
+            </>
+          )}
+
+          {viewMode === 'Logs' && (
+            <>
+              {studentLogs.length > 0 ? (
+                <StudentLogs logs={studentLogs} />
+              ) : (
+                <p className="text-muted">No logs available.</p>
+              )}
+            </>
+          )}
+
+          {viewMode === 'Prescriptions' && (
+            <>
+              {studentPrescriptions.length > 0 ? (
+                <StudentPrescriptions prescriptions={studentPrescriptions} />
+              ) : (
+                <p className="text-muted">No prescriptions found.</p>
+              )}
+            </>
+          )}
         </Card.Body>
       </Card>
     </Container>

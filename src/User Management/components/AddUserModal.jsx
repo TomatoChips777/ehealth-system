@@ -51,7 +51,8 @@ function AddUserModal({ show, onHide, onSubmit, newUser, handleChange }) {
             >
               <option value="">Select Role</option>
               <option value="Admin">Admin</option>
-              <option value="User">User</option>
+              <option value="Physician">Physician</option>
+              <option value="Student">Student</option>
               <option value="Staff">Staff</option>
             </Form.Control>
           </Form.Group>

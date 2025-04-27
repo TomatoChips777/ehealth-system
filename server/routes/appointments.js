@@ -5,7 +5,7 @@ const db = require('../config/db');
 // Get All Borrowed Items
 router.get('/', async (req, res) => {
     try {
-        const rows = await db.queryAsync(`SELECT a.*,p.student_id, a.complaint as chief_complaint ,p.full_name as student_name FROM appointments a JOIN patients p ON a.user_id = p.id ORDER BY created_at DESC;`);
+        const rows = await db.queryAsync(`SELECT a.*,s.student_id, a.complaint as chief_complaint ,s.full_name, s.email, s.birthdate, s.sex FROM appointments a JOIN students s ON a.user_id = s.user_id WHERE a.status = "pending" ORDER BY created_at DESC;`);
         return res.json(rows);
     } catch (err) {
         console.error("Error fetching all borrow records:", err);
@@ -16,13 +16,14 @@ router.get('/', async (req, res) => {
 // Borrow Request (for users)
 router.post('/post-appointment', async (req, res) => {
     const {
+        user_id,
         complaint,
         time,
         date,
     } = req.body;
     console.log(req.body);
 
-    if ( !complaint || !time || !date ) {
+    if ( !complaint || !time || !date || !user_id ) {
         return res.status(400).json({ success: false, message: "Missing required fields" });
     }
 
@@ -31,7 +32,7 @@ router.post('/post-appointment', async (req, res) => {
         (user_id, complaint, time, date)
         VALUES (?, ? ,?, ?)
     `;
-    const values = [1, complaint, time, date];
+    const values = [user_id, complaint, time, date];
 
     try {
         const result = await db.queryAsync(query, values);
@@ -77,6 +78,59 @@ router.put('/update-appointment/:id', async (req, res) => {
         res.status(500).json({ success: false, message: 'Failed to create borrow record or notification' });
     }
 });
+
+router.put('/cancel-appointment/:id', async (req, res) => {
+    const { id } = req.params;
+
+
+    if (!id ) {
+        return res.status(400).json({ success: false, message: "Missing required fields" });
+    }
+
+    const query = `
+        UPDATE appointments SET status = ? WHERE id = ?
+    `;
+    const values = ["canceled" ,id];
+
+    try {
+        const result = await db.queryAsync(query, values);
+        res.json({
+            success: true,
+            message: ' record and notification created successfully',
+        });
+
+    } catch (err) {
+        console.error("Error creating borrow record or notification:", err);
+        res.status(500).json({ success: false, message: 'Failed to create borrow record or notification' });
+    }
+});
+
+router.put('/mark-completed-appointment/:id', async (req, res) => {
+    const { id } = req.params;
+
+
+    if (!id ) {
+        return res.status(400).json({ success: false, message: "Missing required fields" });
+    }
+
+    const query = `
+        UPDATE appointments SET status = ? WHERE id = ?
+    `;
+    const values = ["completed" ,id];
+
+    try {
+        const result = await db.queryAsync(query, values);
+        res.json({
+            success: true,
+            message: ' record and notification created successfully',
+        });
+
+    } catch (err) {
+        console.error("Error creating borrow record or notification:", err);
+        res.status(500).json({ success: false, message: 'Failed to create borrow record or notification' });
+    }
+});
+
 
 // Borrow Record (for admins/staff)
 router.post('/create-borrow', async (req, res) => {

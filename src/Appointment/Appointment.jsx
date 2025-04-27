@@ -11,8 +11,10 @@ import {
   Col,
 } from 'react-bootstrap';
 import FormatDate from '../extra/DateFormat';
-
-const AppointmentPage = () => {
+import { useNavigate } from 'react-router-dom';
+import AutoCompleteInput from './AutoCompleteInput';
+const AppointmentPage = ({ handleLinkClick }) => {
+  const navigate = useNavigate();
   const [appointments, setAppointments] = useState([]);
 
   const [showModal, setShowModal] = useState(false);
@@ -24,14 +26,68 @@ const AppointmentPage = () => {
   const [complaint, setComplaint] = useState('');
   const [currentAppointment, setCurrentAppointment] = useState(null);
 
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [confirmMessage, setConfirmMessage] = useState('');
+
   const [searchQuery, setSearchQuery] = useState('');
 
+  const [suggestedStudents, setSuggestedStudents] = useState([]);
   const formatDateLocal = (isoString) => {
     const date = new Date(isoString);
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  };
+  const [formData, setFormData] = useState({ student_id: '', user_id: '' });
+  const [students, setStudents] = useState([]);
+
+
+  const searchStudents = async (query) => {
+    if (!query.trim()) {
+      setStudents([]);
+      setSuggestedStudents([]);
+      return;
+    }
+
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_SEARCH_STUDENTS}?query=${query}`);
+      const fetchedStudents = response.data;
+
+      if (fetchedStudents.length > 0) {
+        // If students are found, update the suggestions
+        setSuggestedStudents(fetchedStudents);
+      } else {
+        // If no students are found, clear suggestions and any associated state
+        setSuggestedStudents([]);
+        setFormData(prev => ({
+          ...prev,
+          student_id: '', // Clear the student ID if no match
+        }));
+        setStudentName(''); // Clear the student name
+      }
+    } catch (error) {
+      console.error('Error fetching students:', error);
+      // Clear any previous data on error
+      setSuggestedStudents([]);
+      setFormData(prev => ({
+        ...prev,
+        student_id: '', // Clear student ID
+      }));
+      setStudentName(''); // Clear student name
+    }
+  };
+
+
+  const handleChange = async (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+
+    if (name === 'student_id') {
+      await searchStudents(value);
+    }
   };
 
   const formatTime12Hour = (timeString) => {
@@ -93,20 +149,18 @@ const AppointmentPage = () => {
 
     const formattedDate = selectedDate.toISOString().split('T')[0];
     const newAppointment = {
-      id: appointments.length + 1,
-      studentName,
+      student_id: formData.student_id,
+      user_id: formData.user_id,
       date: formattedDate,
       time: selectedTime,
-      complaint,
+      complaint: complaint,
     };
+
+    console.log(newAppointment);
     try {
       const response = await axios.post(`${import.meta.env.VITE_POST_APPOINTMENT}`, newAppointment);
       fetchAppointments();
-      // Reset form and close modal
-      setStudentName('');
-      setComplaint('');
-      setSelectedDate(null);
-      setSelectedTime('');
+      handleCloseCreateModal();
       setShowModal(false);
     } catch (error) {
 
@@ -149,7 +203,7 @@ const AppointmentPage = () => {
 
   const handleReschedule = (appointment) => {
     setCurrentAppointment(appointment);
-    setStudentName(appointment.student_name);
+    setStudentName(appointment.full_name);
     setComplaint(appointment.complaint);
     setSelectedDate(new Date(appointment.date));
     setSelectedTime(appointment.time);
@@ -178,13 +232,15 @@ const AppointmentPage = () => {
     }
   }, [selectedDate, appointments, currentAppointment]);
 
-
-
+  const handleConsultation = (patient) => {
+    handleLinkClick('Consultations');
+    navigate('/consultation', { state: { patient } });
+  };
   const filteredAppointments = useMemo(() => {
     return appointments.filter(appointment => {
       const query = searchQuery.toLowerCase();
       return (
-        appointment.student_name.toLowerCase().includes(query) ||
+        appointment.full_name.toLowerCase().includes(query) ||
         appointment.complaint.toLowerCase().includes(query) ||
         appointment.student_id.toLowerCase().includes(query) ||
         formatDateLocal(appointment.date).includes(query)
@@ -192,10 +248,66 @@ const AppointmentPage = () => {
     });
   }, [appointments, searchQuery]);
 
+  const handleCancelClick = (appointment) => {
+    setSelectedAppointment(appointment);
+    setConfirmMessage('Are you sure you want to cancel this appointment?');
+    setConfirmAction('cancel');
+    setShowConfirmModal(true);
+  };
+  
+  const handleConsultationClick = (appointment) => {
+    setSelectedAppointment(appointment);
+    setConfirmMessage('Proceed to consultation?');
+    setConfirmAction('consultation');
+    setShowConfirmModal(true);
+  };
+  
+
+  const handleConfirm = async () => {
+    if (confirmAction === 'cancel') {
+      try {
+        await axios.put(`${import.meta.env.VITE_CANCEL_APPOINTMENT}/${selectedAppointment.id}`);
+        setAppointments(prevAppointments => prevAppointments.filter(app => app.id !== selectedAppointment.id));
+      } catch (error) {
+        console.error('Error cancelling appointment:', error);
+        alert('Failed to cancel appointment. Please try again.');
+      }
+    } else if (confirmAction === 'consultation') {
+      try {
+        // Mark appointment (if needed, otherwise just navigate)
+        await axios.put(`${import.meta.env.VITE_MARK_APPOINTMENT}/${selectedAppointment.id}`);
+        navigate('/consultation', { state: { patient: selectedAppointment  } });
+      } catch (error) {
+        console.error('Error proceeding to consultation:', error);
+        alert('Failed to proceed. Please try again.');
+      }
+    }
+    setShowConfirmModal(false);
+    setSelectedAppointment(null);
+    setConfirmAction(null);
+  };
+
+  const handleCLoseModal = () => {
+    setShowRescheduleModal(false);
+    setStudentName('');
+    setComplaint('');
+    setSelectedDate(null);
+    setSelectedTime('');
+  };
+  const handleCloseCreateModal = () => {
+    setShowModal(false);
+    setFormData({ student_id: '' });
+    setStudentName('');
+    setComplaint('');
+    setSelectedDate(null);
+    setSelectedTime('');
+    setSuggestedStudents([]);
+  };
+
+
   const [currentPage, setCurrentPage] = useState(1);
   const appointmentsPerPage = 10;
 
-  // Calculate indices
   const indexOfLast = currentPage * appointmentsPerPage;
   const indexOfFirst = indexOfLast - appointmentsPerPage;
   const currentAppointments = filteredAppointments.slice(indexOfFirst, indexOfLast);
@@ -236,15 +348,18 @@ const AppointmentPage = () => {
             <tbody>
               {currentAppointments.map((app) => (
                 <tr key={app.id}>
-                  <td>{app.id}</td>
-                  <td>{app.student_name}</td>
+                  <td>{app.student_id}</td>
+                  <td>{app.full_name}</td>
                   <td>{FormatDate(app.date, false)}</td>
                   <td>{formatTime12Hour(app.time)}</td>
                   <td>{app.complaint}</td>
                   <td className='text-center'>
                     <Button variant='primary' size='sm' className='me-2' onClick={() => handleReschedule(app)}>Reschedule</Button>
-                    <Button variant='success' size='sm' className='me-2' onClick={() => console.log("")}>Consultation</Button>
-                    <Button variant='danger' size='sm' onClick={() => console.log("")}>Cancel</Button>
+                    {/* <Button variant='success' size='sm' className='me-2' onClick={() => handleConsultation(app)}>Consultation</Button>
+                    <Button variant='danger' size='sm' onClick={() => handleCancel(app.id)}>Cancel</Button> */}
+                    <Button variant='success' size='sm' className='me-2' onClick={() => handleConsultationClick(app)}>Consultation</Button>
+                    <Button variant='danger' size='sm' onClick={() => handleCancelClick(app)}>Cancel</Button>
+
                   </td>
                 </tr>
               ))}
@@ -278,14 +393,62 @@ const AppointmentPage = () => {
           </div>
         </Card.Footer>
       </Card>
+      <Modal show={showConfirmModal} onHide={() => setShowConfirmModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Confirmation</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {confirmMessage}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowConfirmModal(false)}>
+            No
+          </Button>
+          <Button variant="primary" onClick={handleConfirm}>
+            Yes
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
-      {/* Modal for Creating Appointment */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} centered>
+
+
+      <Modal
+        show={showModal}
+        onHide={handleCloseCreateModal}
+        centered
+        backdrop="static"
+        keyboard={false}
+      >
         <Modal.Header closeButton>
           <Modal.Title>Create Appointment</Modal.Title>
         </Modal.Header>
+
         <Modal.Body>
           <Form>
+
+            {/* Student ID Input with AutoComplete */}
+            <Form.Group>
+              <AutoCompleteInput
+                label="Student ID"
+                name="student_id"
+                value={formData.student_id}
+                onChange={handleChange}
+                options={students}
+                getOptionLabel={(student) => student.student_id}
+                onBlur={() => {
+                  const studentExists = students.find(
+                    (student) => student.student_id === formData.student_id
+                  );
+                  if (!studentExists) {
+                    setFormData(prev => ({ ...prev, student_id: '' }));
+                    setStudentName('');
+                  }
+                }}
+                disabled={false}
+              />
+            </Form.Group>
+
+            {/* Student Name and Complaint Fields */}
             <Row className="mb-3">
               <Col md={6}>
                 <Form.Group>
@@ -293,31 +456,56 @@ const AppointmentPage = () => {
                   <Form.Control
                     type="text"
                     value={studentName}
-                    onChange={(e) => setStudentName(e.target.value)}
                     placeholder="Enter name"
+                    disabled
+                    onChange={(e) => setStudentName(e.target.value)}
                   />
+
+                  {/* Suggested Students Dropdown */}
+                  {suggestedStudents.length > 0 && (
+                    <div className="autocomplete-dropdown">
+                      {suggestedStudents.map((student) => (
+                        <div
+                          key={student.id}
+                          className="autocomplete-item"
+                          onClick={() => {
+                            setStudentName(student.full_name);
+                            setFormData(prev => ({
+                              ...prev,
+                              student_id: student.student_id,
+                              user_id: student.user_id,
+                            }));
+                            setSuggestedStudents([]);
+                          }}
+                        >
+                          {student.full_name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </Form.Group>
               </Col>
+
               <Col md={6}>
                 <Form.Group>
                   <Form.Label>Complaint</Form.Label>
                   <Form.Control
                     type="text"
                     value={complaint}
-                    onChange={(e) => setComplaint(e.target.value)}
                     placeholder="Enter complaint"
+                    onChange={(e) => setComplaint(e.target.value)}
                   />
                 </Form.Group>
               </Col>
             </Row>
 
+            {/* Date and Time Selection */}
             <Row className="mb-3">
               <Col md={6}>
                 <Form.Group>
                   <Form.Label>Select Date</Form.Label>
                   <Form.Control
                     type="date"
-                    // value={selectedDate ? selectedDate.toISOString().split('T')[0] : ''}
                     value={selectedDate ? formatLocalDate(selectedDate) : ''}
                     onChange={handleDateChange}
                   />
@@ -343,8 +531,10 @@ const AppointmentPage = () => {
                 </Col>
               )}
             </Row>
+
           </Form>
         </Modal.Body>
+
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowModal(false)}>
             Cancel
@@ -356,7 +546,7 @@ const AppointmentPage = () => {
       </Modal>
 
       {/* Modal for Rescheduling Appointment */}
-      <Modal show={showRescheduleModal} onHide={() => setShowRescheduleModal(false)} centered>
+      <Modal show={showRescheduleModal} onHide={() => handleCLoseModal()} centered>
         <Modal.Header closeButton>
           <Modal.Title>Reschedule Appointment</Modal.Title>
         </Modal.Header>
@@ -371,6 +561,7 @@ const AppointmentPage = () => {
                     value={studentName}
                     onChange={(e) => setStudentName(e.target.value)}
                     placeholder="Enter name"
+                    disabled
                   />
                 </Form.Group>
               </Col>
@@ -382,6 +573,7 @@ const AppointmentPage = () => {
                     value={complaint}
                     onChange={(e) => setComplaint(e.target.value)}
                     placeholder="Enter complaint"
+                    disabled
                   />
                 </Form.Group>
               </Col>

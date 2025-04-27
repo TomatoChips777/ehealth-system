@@ -3,14 +3,16 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import AuthProvider from '../AuthContext.jsx';
+import { BrowserRouter as Router } from 'react-router-dom'; // Import the Router here
 import './index.css';
-
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <GoogleOAuthProvider clientId={`${import.meta.env.VITE_CLIENT_ID}`}>
       <AuthProvider>
-        <App />
+        <Router>
+          <App />
+        </Router>
       </AuthProvider>
     </GoogleOAuthProvider>
   </React.StrictMode>

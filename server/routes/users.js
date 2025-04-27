@@ -65,6 +65,7 @@ router.post('/login', async (req, res) => {
                 await db.queryAsync(updateQuery, params);
             }
 
+            req.io.emit("updateUser");
             return res.json(user);
         }
     } catch (err) {
@@ -99,14 +100,25 @@ router.post('/get-current-user', async (req, res) => {
 });
 
 router.get('/get-all-users', async (req, res) => {
+    const query = `SELECT s.*, u.name, u.status, u.password, u.role, u.username FROM students s JOIN users u on u.id = s.user_id`;
+
     try {
-        const rows = await db.queryAsync('SELECT * FROM users');
-        return res.json(rows);
+        const rows = await db.queryAsync(query);
+        res.json(rows);
     } catch (err) {
-        console.error('Get all users error:', err);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error("Error fetching all students:", err);
+        res.status(500).json({ success: false, message: 'Error fetching data' });
     }
 });
+// router.get('/get-all-users', async (req, res) => {
+//     try {
+//         const rows = await db.queryAsync('SELECT * FROM users');
+//         return res.json(rows);
+//     } catch (err) {
+//         console.error('Get all users error:', err);
+//         res.status(500).json({ error: 'Internal server error' });
+//     }
+// });
 
 
 router.put('/activate-deactivate-user/:userId', async (req, res) => {
@@ -134,7 +146,7 @@ router.put('/activate-deactivate-user/:userId', async (req, res) => {
 
 router.post('/manual-signin', async (req, res) => {
     const { email, password, name, picture } = req.body;
-
+    console.log(req.body);
     if (!email || !password) {
         return res.status(400).json({ error: 'Email and password are required' });
     }
@@ -154,6 +166,7 @@ router.post('/manual-signin', async (req, res) => {
         if (!isMatch) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
+        req.io.emit("updateUser");
 
         // If password is correct, send user info
         return res.json({
@@ -171,8 +184,8 @@ router.post('/manual-signin', async (req, res) => {
 
 
 router.post('/add-user', async (req, res) => {
-    const { email, password, name, picture } = req.body;
-
+    const { email, password, name, picture, role } = req.body;
+    console.log(req.body);
     if (!email || !password || !name) {
         return res.status(400).json({ error: 'Email, password, and name are required' });
     }
@@ -197,10 +210,11 @@ router.post('/add-user', async (req, res) => {
 
         // Insert the new user into the database with the hashed password
         await db.queryAsync(
-            'INSERT INTO users (name, email, password, image_url) VALUES (?, ?, ?, ?)',
-            [name, email, hashedPassword, imageFileName ? `profile/${imageFileName}` : null]
+            'INSERT INTO users (name, email,username, role, password, image_url) VALUES (?, ?, ?, ?, ?,?)',
+            [name, email, email, role, hashedPassword, imageFileName ? `profile/${imageFileName}` : null]
         );
 
+        req.io.emit("updateUser");
     
         return res.json({ success: true, message: 'User added successfully' });
     } catch (err) {

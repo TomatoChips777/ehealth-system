@@ -195,35 +195,6 @@ router.put('/update/:id', async (req, res) => {
         res.status(500).json({ success: false, message: 'Failed to update borrow record' });
     }
 });
-// // Update Borrow Record
-// router.put('/update-status/:id', async (req, res) => {
-//     const { id } = req.params;
-//     const { status, assist_by
-//     } = req.body;
-
-//     const query = `
-//         UPDATE borrowed_items SET  status = ?, assisted_by = ? WHERE id = ?`;
-
-//     const values = [
-//         status || 'Pending',
-//         assist_by,
-//         id
-//     ];
-
-//     try {
-//         const result = await db.queryAsync(query, values);
-
-//         if (result.affectedRows === 0) {
-//             return res.status(404).json({ success: false, message: 'Borrow record not found' });
-//         }
-//         req.io.emit('updateBorrowing');
-//         res.json({ success: true, message: 'Borrow record updated successfully' });
-//     } catch (err) {
-//         console.error("Error updating borrow record:", err);
-//         res.status(500).json({ success: false, message: 'Failed to update borrow record' });
-//     }
-// });
-
 
 router.put('/update-status/:id', async (req, res) => {
     const { id } = req.params;
@@ -259,7 +230,7 @@ router.put('/update-status/:id', async (req, res) => {
         }
 
         req.io.emit('updateBorrowing');
-        req.io.emit('update');  // Emit the update event to notify clients
+        req.io.emit('update'); 
         res.json({ success: true, message: 'Borrow record updated successfully' });
     } catch (err) {
         console.error("Error updating borrow record:", err);

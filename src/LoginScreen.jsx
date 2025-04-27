@@ -171,7 +171,7 @@ const LoginScreen = () => {
 
               <div className="text-center mt-3">
                 <small>
-                  Don't have an account? <a href="/">Go Back</a>
+                  Don't have an account? <a href="/registration">Register</a>
                 </small>
               </div>
             </Card.Body>

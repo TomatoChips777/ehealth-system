@@ -1,6 +1,7 @@
-// App.jsx
-import { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+
+
+import { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
@@ -19,16 +20,47 @@ import Users from './User Management/Users';
 import ChatWidget from './Chatbot/ChatWidget';
 import Patients from './Patients/Patients';
 import Prescriptions from './Prescriptions/Prescriptions';
-import ConsultationForm from './Patients/components/ConsultationForm';
+import Consultation from './Consultation/ConsultationForm';
 import AnnualPhysicalExamForm from './Patients/components/AnnualPhysicalExamForm';
 import PatientDetails from './Patients/components/PatientDetails';
 import AppointmentPage from './Appointment/Appointment';
+import MedicineInventory from './Inventory/MedicineInventory';
+import SupplyInventory from './Inventory/SupplyInventory';
+import EquipmentInventory from './Inventory/EquipmentIventory';
+import Registration from './Registration';
+
 function App() {
   const [chatMessage, setChatMessage] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeLink, setActiveLink] = useState(() => {
     return localStorage.getItem("activeLink") || "Dashboard";
   });
+
+  const location = useLocation();
+
+  useEffect(() => {
+    // Update active link based on the current path
+    const path = location.pathname;
+    const routeMap = {
+      '/': 'Dashboard',
+      '/inventory': 'Inventory',
+      '/borrowing': 'Borrowing',
+      '/events': 'Calendar',
+      '/notifications': 'Notifications',
+      '/users': 'Users',
+      '/patients': 'Patients',
+      '/prescriptions': 'Prescriptions',
+      '/appointment': 'Appointment',
+      '/consultation': 'Consultations',
+      '/patient-details': 'Patients',
+      '/annualreport': 'Patients',
+      '/medicines': 'Medicines',
+      '/supply': 'Supply',
+      '/equipment': 'Equipments',
+    };
+
+    setActiveLink(routeMap[path] || 'Dashboard');
+  }, [location]);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
@@ -38,50 +70,86 @@ function App() {
   };
 
   const handleAskButton = (message) => {
-    setChatMessage(message); 
+    setChatMessage(message);
   };
-  const { isAuthenticated, isLoading } = useAuth();
+
+  const { isAuthenticated, isLoading, role } = useAuth();
   if (isLoading) return <div>Loading...</div>;
 
   return (
-    <Router>
+    <div className="layout">
       {isAuthenticated ? (
-        <div className="layout">
+        <>
           <Sidebar
             sidebarOpen={sidebarOpen}
             activeLink={activeLink}
             handleLinkClick={handleLinkClick}
+            role={role}
           />
           <div className="main-content">
             <TopNavbar toggleSidebar={toggleSidebar} />
             <div className="content-scroll p-3">
-              <ChatWidget askMessage={chatMessage}/>
               <Routes>
-                <Route path="/" element={<Dashboard handleAskButton={handleAskButton}/>} />
-                <Route path='/users' element={<Users handleAskButton={handleAskButton}/>}/>
-                <Route path='/patients' element={<Patients handleAskButton={handleAskButton} handleLinkClick={handleLinkClick}/>}/>
-                <Route path='/consultation' element={<ConsultationForm/>}/>
-                <Route path='/annualreport' element={<AnnualPhysicalExamForm/>}/>
-                <Route path='/patient-details' element={<PatientDetails/>}/>
-                <Route path='/appointment' element={<AppointmentPage/>} />
-                <Route path='/prescriptions' element={<Prescriptions handleAskButton={handleAskButton}/>}/>
-                <Route path="/inventory" element={<Inventory handleAskButton={handleAskButton} />} />
-                <Route path="/borrowing" element={<BorrowingScreen handleAskButton={handleAskButton} />} />
-                <Route path="/events" element={<EventManager handleAskButton={handleAskButton} />} />
-                <Route path="/notifications" element={<Notifications  handleAskButton={handleAskButton}/>}/>
-                <Route path="*" element={<Navigate to="/" />} />
+                {role === 'Admin' && (
+                  <>
+                    <Route path="/" element={<Dashboard handleAskButton={handleAskButton} />} />
+                    <Route path='/users' element={<Users handleAskButton={handleAskButton} />} />
+                    <Route path='/patients' element={<Patients handleAskButton={handleAskButton} handleLinkClick={handleLinkClick} />} />
+                    <Route path='/consultation' element={<Consultation handleLinkClick={handleLinkClick} />} />
+                    <Route path='/annualreport' element={<AnnualPhysicalExamForm handleLinkClick={handleLinkClick} />} />
+                    <Route path='/patient-details' element={<PatientDetails handleLinkClick={handleLinkClick} />} />
+                    <Route path='/appointment' element={<AppointmentPage handleLinkClick={handleLinkClick} />} />
+                    <Route path='/prescriptions' element={<Prescriptions handleAskButton={handleAskButton} />} />
+                    <Route path="/inventory" element={<Inventory handleAskButton={handleAskButton} />} />
+                    <Route path="/borrowing" element={<BorrowingScreen handleAskButton={handleAskButton} />} />
+                    <Route path="/events" element={<EventManager handleAskButton={handleAskButton} />} />
+                    <Route path="/notifications" element={<Notifications handleAskButton={handleAskButton} />} />
+                    <Route path="/medicines" element={<MedicineInventory handleAskButton={handleAskButton} />} />
+                    <Route path="/supply" element={<SupplyInventory handleAskButton={handleAskButton} />} />
+                    <Route path="/equipment" element={<EquipmentInventory handleAskButton={handleAskButton} />} />
+                    <Route path="*" element={<Navigate to="/" />} />
+                  </>
+                )}
+
+                {role === 'Physician' && (
+
+                  <>
+                    <Route path="/" element={<Dashboard handleAskButton={handleAskButton} />} />
+                    <Route path='/patients' element={<Patients handleAskButton={handleAskButton} handleLinkClick={handleLinkClick} />} />
+                    <Route path='/consultation' element={<Consultation handleLinkClick={handleLinkClick} />} />
+                    <Route path='/annualreport' element={<AnnualPhysicalExamForm handleLinkClick={handleLinkClick} />} />
+                    <Route path='/patient-details' element={<PatientDetails handleLinkClick={handleLinkClick} />} />
+                    <Route path='/appointment' element={<AppointmentPage handleLinkClick={handleLinkClick} />} />
+                    <Route path='/prescriptions' element={<Prescriptions handleAskButton={handleAskButton} />} />
+                    <Route path="/inventory" element={<Inventory handleAskButton={handleAskButton} />} />
+                    <Route path="/notifications" element={<Notifications handleAskButton={handleAskButton} />} />
+                    <Route path="/medicines" element={<MedicineInventory handleAskButton={handleAskButton} />} />
+                    <Route path="/supply" element={<SupplyInventory handleAskButton={handleAskButton} />} />
+                    <Route path="/equipment" element={<EquipmentInventory handleAskButton={handleAskButton} />} />
+                    <Route path="*" element={<Navigate to="/" />} />
+                  </>
+                )}
+                {role === 'Staff' && (
+
+                  <>
+                    <Route path="/medicines" element={<MedicineInventory handleAskButton={handleAskButton} />} />
+                    <Route path="/supply" element={<SupplyInventory handleAskButton={handleAskButton} />} />
+                    <Route path="/equipment" element={<EquipmentInventory handleAskButton={handleAskButton} />} />
+                    <Route path="*" element={<Navigate to="/medicines" />} />
+                  </>
+                )}
               </Routes>
             </div>
           </div>
-        </div>
+        </>
       ) : (
         <Routes>
-          <Route path="/" element={<RequestPage />} />
-          <Route path="/login" element={<LoginScreen/>} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<LoginScreen />} />
+          <Route path='/registration' element={<Registration/>} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       )}
-    </Router>
+    </div>
   );
 }
 

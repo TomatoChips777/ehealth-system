@@ -1,35 +1,47 @@
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { Button, Card, Form, Col, Row, Container, Table, Modal } from 'react-bootstrap';
-import { PersonFill, FileEarmarkText, FileLock, Trash, Eye } from 'react-bootstrap-icons';
+import { Eye, ClipboardPlus, PersonVcard, FileEarmarkMedical } from 'react-bootstrap-icons';
 import FormatDate from '../extra/DateFormat';
 import { useNavigate } from 'react-router-dom';
-
+import { io } from 'socket.io-client';
 function Patients({ handleLinkClick }) {
-  const navigate = useNavigate(); 
+  const [baseLink, setBaseLink] = useState('Patients');
+  const navigate = useNavigate();
   const [patients, setPatients] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [newPatient, setNewPatient] = useState({
-    name: '',
-    age: '',
-    gender: '',
-    contact: '',
-    birthdate: '',
-    medicalHistory: '',
+    username: "",
+    password: "",
+    email: "",
+    name: "",
+    student_id: "",
+    full_name: "",
+    course: "",
+    year: "",
+    birthdate: "",
+    sex: "",
+    contact_number: "",
+    address: "",
+    contact_person: "",
+    contact_person_number: "",
   });
+
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const patientsPerPage = 5; // Limit per page
+  const patientsPerPage = 20; 
 
   // Fetch patients from API
   const fetchPatients = async () => {
     try {
       const response = await axios.get(`${import.meta.env.VITE_GET_PATIENTS}`);
       setPatients(response.data);
+      const uniqueCourses = [...new Set(response.data.map(p => p.course).filter(Boolean))].sort();
+      setCourses(uniqueCourses);
     } catch (error) {
       console.error("Error fetching patients:", error);
     }
@@ -37,6 +49,13 @@ function Patients({ handleLinkClick }) {
 
   useEffect(() => {
     fetchPatients();
+    const socket = io(`${import.meta.env.VITE_API_URL}`);
+    socket.on('updateUser', () => {
+      fetchData();
+    });
+    return () => {
+      socket.disconnect();
+    };
   }, []);
 
   // Handle search input
@@ -45,12 +64,30 @@ function Patients({ handleLinkClick }) {
     setCurrentPage(1); // Reset to the first page when search term changes
   };
 
-  // Filter patients based on search term
-const filteredPatients = patients.filter(
-  (patient) =>
-    (patient.full_name && patient.full_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (patient.email && patient.email.toLowerCase().includes(searchTerm.toLowerCase()))
-);
+  // NEW STATES for filters
+  const [filterSex, setFilterSex] = useState('');
+  const [filterCourse, setFilterCourse] = useState('');
+  const [filterYear, setFilterYear] = useState('');
+  const [courses, setCourses] = useState([]);
+
+  // Updated filter
+  const filteredPatients = patients.filter((patient) => {
+    const search = searchTerm.toLowerCase();
+    const matchesSearch =
+      (patient.full_name && patient.full_name.toLowerCase().includes(search)) ||
+      (patient.student_id && patient.student_id.toLowerCase().includes(search)) ||
+      (patient.email && patient.email.toLowerCase().includes(search)) ||
+      (patient.course && patient.course.toLowerCase().includes(search)) ||
+      (patient.year && patient.year.toLowerCase().includes(search)) ||
+      (patient.contact_number && patient.contact_number.toLowerCase().includes(search));
+
+    const matchesSex = filterSex ? patient.sex === filterSex : true;
+    const matchesCourse = filterCourse ? patient.course === filterCourse : true;
+    const matchesYear = filterYear ? patient.year === filterYear : true;
+
+    return matchesSearch && matchesSex && matchesCourse && matchesYear;
+  });
+
 
   const totalPages = Math.ceil(filteredPatients.length / patientsPerPage);
 
@@ -81,17 +118,48 @@ const filteredPatients = patients.filter(
   };
 
   // Add a new patient
-  const handleAddNewPatient = () => {
-    setPatients([...patients, { ...newPatient, id: patients.length + 1 }]);
-    setNewPatient({
-      name: '',
-      age: '',
-      gender: '',
-      contact: '',
-      birthdate: '',
-      medicalHistory: '',
-    });
-    setShowModal(false);
+  // const handleAddNewPatient = () => {
+  //   setPatients([...patients, { ...newPatient, id: patients.length + 1 }]);
+  //   setNewPatient({
+  //     name: '',
+  //     age: '',
+  //     gender: '',
+  //     contact: '',
+  //     birthdate: '',
+  //     medicalHistory: '',
+  //   });
+  //   setShowModal(false);
+  // };
+
+
+  const handleAddNewPatient = async () => {
+    try {
+      const payload = {
+        username: newPatient.email,
+        password: "",
+        email: newPatient.email,
+        name: newPatient.full_name,
+        student_id: newPatient.student_id,
+        full_name: newPatient.full_name,
+        course: newPatient.course,
+        year: newPatient.year,
+        birthdate: newPatient.birthdate,
+        sex: newPatient.sex,
+        contact_number: newPatient.contact_number,
+        address: newPatient.address,
+        contact_person: newPatient.contact_person,
+        contact_person_number: newPatient.contact_person_number,
+      };
+
+      await axios.post(`${import.meta.env.VITE_ADD_PATIENT}`, payload);
+      console.log(newPatient);
+      alert('Patient added successfully!');
+      setShowModal(false);
+      fetchPatients(); // Refresh the table
+    } catch (error) {
+      console.error('Error adding patient:', error);
+      alert('Failed to add patient.');
+    }
   };
 
   // Handle delete patient
@@ -107,6 +175,7 @@ const filteredPatients = patients.filter(
   };
 
   const handleConsultation = (patient) => {
+    handleLinkClick('Consultations');
     navigate('/consultation', { state: { patient } });
   };
 
@@ -126,19 +195,51 @@ const filteredPatients = patients.filter(
               </Button>
             </Card.Header>
             <Card.Body>
-              <Form.Group className="mb-3">
-                <Form.Control
-                  type="text"
-                  placeholder="Search by Name or Email"
-                  value={searchTerm}
-                  onChange={handleSearch}
-                />
-              </Form.Group>
+              <Row className="mb-3">
+                <Col md={3}>
+                  <Form.Control
+                    type="text"
+                    placeholder="Search by Name, ID, Email..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </Col>
+
+                <Col md={3}>
+                  <Form.Select value={filterSex} onChange={(e) => setFilterSex(e.target.value)}>
+                    <option value="">All Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </Form.Select>
+                </Col>
+
+                <Col md={3}>
+                  <Form.Select value={filterCourse} onChange={(e) => setFilterCourse(e.target.value)}>
+                    <option value="">All Courses</option>
+                    {courses.map((course, idx) => (
+                      <option key={idx} value={course}>
+                        {course}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Col>
+                <Col md={3}>
+                  <Form.Select value={filterYear} onChange={(e) => setFilterYear(e.target.value)}>
+                    <option value="">All Years</option>
+                    <option value="1st Year">1st Year</option>
+                    <option value="2nd Year">2nd Year</option>
+                    <option value="3rd Year">3rd Year</option>
+                    <option value="4th Year">4th Year</option>
+                  </Form.Select>
+                </Col>
+              </Row>
               <Table striped bordered hover responsive>
                 <thead>
                   <tr>
                     <th>ID</th>
                     <th>Full Name</th>
+                    <th>Course/Year</th>
                     <th>Date of birth</th>
                     <th>Gender</th>
                     <th>Email</th>
@@ -151,6 +252,7 @@ const filteredPatients = patients.filter(
                       <tr key={patient.id}>
                         <td>{patient.student_id}</td>
                         <td>{patient.full_name}</td>
+                        <td>{patient.course} - {patient.year}</td>
                         <td>{FormatDate(patient.birthdate, false)}</td>
                         <td>{patient.sex}</td>
                         <td>{patient.email}</td>
@@ -169,7 +271,7 @@ const filteredPatients = patients.filter(
                             className="rounded-0 me-2"
                             onClick={() => handleAnnualReport(patient)}
                           >
-                            <PersonFill />
+                            <ClipboardPlus />
                           </Button>
                           <Button
                             variant="warning"
@@ -177,7 +279,7 @@ const filteredPatients = patients.filter(
                             className="rounded-0 me-2"
                             onClick={() => handleConsultation(patient)}
                           >
-                            <PersonFill />
+                            <PersonVcard />
                           </Button>
                           <Button
                             variant="success"
@@ -185,7 +287,7 @@ const filteredPatients = patients.filter(
                             className="rounded-0"
                             onClick={() => handlePrescription(patient)}
                           >
-                            <FileEarmarkText />
+                            <FileEarmarkMedical />
                           </Button>
                         </td>
                       </tr>
@@ -203,7 +305,7 @@ const filteredPatients = patients.filter(
               {/* Pagination Controls */}
               <div className="d-flex justify-content-between align-items-center">
                 <Button
-                  variant="secondary"
+                  variant="primary"
                   size="sm"
                   className="rounded-0"
                   disabled={currentPage === 1}
@@ -213,7 +315,7 @@ const filteredPatients = patients.filter(
                 </Button>
                 <span>{`Page ${currentPage} of ${totalPages}`}</span>
                 <Button
-                  variant="secondary"
+                  variant="primary"
                   size="sm"
                   className="rounded-0"
                   disabled={currentPage === totalPages}
@@ -234,68 +336,183 @@ const filteredPatients = patients.filter(
         </Modal.Header>
         <Modal.Body>
           <Form>
-            <Form.Group controlId="formPatientName">
-              <Form.Label>Name</Form.Label>
-              <Form.Control
-                type="text"
-                placeholder="Enter patient's full name"
-                name="name"
-                value={newPatient.name}
-                onChange={handleChange}
-              />
-            </Form.Group>
-            <Form.Group controlId="formPatientAge">
-              <Form.Label>Age</Form.Label>
-              <Form.Control
-                type="number"
-                placeholder="Enter patient's age"
-                name="age"
-                value={newPatient.age}
-                onChange={handleChange}
-              />
-            </Form.Group>
-            <Form.Group controlId="formPatientGender">
-              <Form.Label>Gender</Form.Label>
-              <Form.Control
-                as="select"
-                name="gender"
-                value={newPatient.gender}
-                onChange={handleChange}
-              >
-                <option value="">Select Gender</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-              </Form.Control>
-            </Form.Group>
-            <Form.Group controlId="formPatientContact">
-              <Form.Label>Contact</Form.Label>
-              <Form.Control
-                type="text"
-                placeholder="Enter patient's contact number"
-                name="contact"
-                value={newPatient.contact}
-                onChange={handleChange}
-              />
-            </Form.Group>
-            <Form.Group controlId="formPatientBirthdate">
-              <Form.Label>Birthdate</Form.Label>
-              <Form.Control
-                type="date"
-                name="birthdate"
-                value={newPatient.birthdate}
-                onChange={handleChange}
-              />
-            </Form.Group>
-            <Form.Group controlId="formPatientHistory">
-              <Form.Label>Medical History</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={3}
-                name="medicalHistory"
-                value={newPatient.medicalHistory}
-                onChange={handleChange}
-              />
-            </Form.Group>
+            <Row>
+              {/* Student ID */}
+              <Col md={6}>
+                <Form.Group controlId="formStudentId" className="mb-3">
+                  <Form.Label>Student ID</Form.Label>
+                  <Form.Control
+                    type="text"
+                    placeholder="Enter student ID"
+                    name="student_id"
+                    value={newPatient.student_id}
+                    onChange={handleChange}
+                    required
+                  />
+                </Form.Group>
+              </Col>
+
+              {/* Full Name */}
+              <Col md={6}>
+                <Form.Group controlId="formFullName" className="mb-3">
+                  <Form.Label>Full Name</Form.Label>
+                  <Form.Control
+                    type="text"
+                    placeholder="Enter full name"
+                    name="full_name"
+                    value={newPatient.full_name}
+                    onChange={handleChange}
+                    required
+                  />
+                </Form.Group>
+              </Col>
+
+              {/* Email */}
+              <Col md={6}>
+                <Form.Group controlId="formEmail" className="mb-3">
+                  <Form.Label>Email</Form.Label>
+                  <Form.Control
+                    type="email"
+                    placeholder="Enter email"
+                    name="email"
+                    value={newPatient.email}
+                    onChange={handleChange}
+                    required
+                  />
+                </Form.Group>
+              </Col>
+
+              {/* Course */}
+              <Col md={6}>
+                <Form.Group controlId="formCourse" className="mb-3">
+                  <Form.Label>Course</Form.Label>
+                  <Form.Control
+                    type="text"
+                    placeholder="Enter course (e.g., BSIT)"
+                    name="course"
+                    value={newPatient.course}
+                    onChange={handleChange}
+                  />
+                </Form.Group>
+              </Col>
+
+              {/* Year */}
+              <Col md={6}>
+                <Form.Group controlId="formYear" className="mb-3">
+                  <Form.Label>Year Level</Form.Label>
+                  <Form.Select
+                    name="year"
+                    value={newPatient.year}
+                    onChange={handleChange}
+                  >
+                    <option value="">Select Year</option>
+                    <option value="1st Year">1st Year</option>
+                    <option value="2nd Year">2nd Year</option>
+                    <option value="3rd Year">3rd Year</option>
+                    <option value="4th Year">4th Year</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+
+              {/* Birthdate */}
+              <Col md={6}>
+                <Form.Group controlId="formBirthdate" className="mb-3">
+                  <Form.Label>Birthdate</Form.Label>
+                  <Form.Control
+                    type="date"
+                    name="birthdate"
+                    value={newPatient.birthdate}
+                    onChange={handleChange}
+                  />
+                </Form.Group>
+              </Col>
+
+              {/* Sex */}
+              <Col md={6}>
+                <Form.Group controlId="formSex" className="mb-3">
+                  <Form.Label>Sex</Form.Label>
+                  <Form.Select
+                    name="sex"
+                    value={newPatient.sex}
+                    onChange={handleChange}
+                    required
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+
+              {/* Contact Number */}
+              <Col md={6}>
+                <Form.Group controlId="formContactNumber" className="mb-3">
+                  <Form.Label>Contact Number</Form.Label>
+                  <Form.Control
+                    type="text"
+                    placeholder="Enter contact number"
+                    name="contact_number"
+                    value={newPatient.contact_number}
+                    onChange={handleChange}
+                  />
+                </Form.Group>
+              </Col>
+
+              {/* Address */}
+              <Col md={6}>
+                <Form.Group controlId="formAddress" className="mb-3">
+                  <Form.Label>Address</Form.Label>
+                  <Form.Control
+                    type="text"
+                    placeholder="Enter address"
+                    name="address"
+                    value={newPatient.address}
+                    onChange={handleChange}
+                  />
+                </Form.Group>
+              </Col>
+
+              {/* Emergency Contact Person */}
+              <Col md={6}>
+                <Form.Group controlId="formContactPerson" className="mb-3">
+                  <Form.Label>Emergency Contact Person</Form.Label>
+                  <Form.Control
+                    type="text"
+                    placeholder="Enter emergency contact person"
+                    name="contact_person"
+                    value={newPatient.contact_person}
+                    onChange={handleChange}
+                  />
+                </Form.Group>
+              </Col>
+
+              {/* Emergency Contact Number */}
+              <Col md={6}>
+                <Form.Group controlId="formContactPersonNumber" className="mb-3">
+                  <Form.Label>Emergency Contact Number</Form.Label>
+                  <Form.Control
+                    type="text"
+                    placeholder="Enter emergency contact number"
+                    name="contact_person_number"
+                    value={newPatient.contact_person_number}
+                    onChange={handleChange}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group controlId="formPassword" className="mb-3">
+                  <Form.Label>Password</Form.Label>
+                  <Form.Control
+                    type="password"
+                    placeholder="Enter a password"
+                    name="password"
+                    value={newPatient.password}
+                    onChange={handleChange}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
           </Form>
         </Modal.Body>
         <Modal.Footer>

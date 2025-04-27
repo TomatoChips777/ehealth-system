@@ -2,22 +2,22 @@ import { useEffect, useMemo, useState } from 'react';
 import { Container, Table, Form, Button, Row, Col, Card, Spinner } from 'react-bootstrap';
 import axios from 'axios';
 import PaginationControls from '../extra/Paginations';
-import AddUserModal from './components/AddUserModal';
-import EditUserModal from './components/EditUserModal';
 import FormatDate from '../extra/DateFormat';
-
+import EditUserModal from '../extra/EditUserModal';
+import AddUserModal from '../extra/AddUserModal';
+import { io } from 'socket.io-client';
 function Users() {
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-
+  const [selectedPatient, setSelectedPatient] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [loading, setLoading] = useState(true);
-
+  
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
@@ -39,6 +39,13 @@ function Users() {
 
   useEffect(() => {
     fetchUsers();
+    const socket = io(`${import.meta.env.VITE_API_URL}`);
+    socket.on('updateUser', () => {
+      fetchData();
+    });
+    return () => {
+      socket.disconnect();
+    };
   }, []);
 
   const filteredUsers = useMemo(() => {
@@ -74,6 +81,13 @@ function Users() {
       if (res.data.success) {
         setShowAddModal(false);
         fetchUsers();
+        setNewUser({
+          name: '',
+          email: '',
+          password: '',
+          role: '',
+          status: 1,
+        });
       }
     } catch (err) {
       console.log(err);
@@ -97,6 +111,15 @@ function Users() {
     setShowEditModal(true);
   };
 
+  const handleEditClick = (patient) => {
+    setSelectedPatient(patient);
+    setShowEditModal(true);
+  };
+
+  const handleSave = () => {
+    console.log('Saved!');
+    
+  };
   const handleDelete = (id) => {
     setUsers(users.filter(user => user.id !== id));
   };
@@ -110,10 +133,10 @@ function Users() {
     const newStatus = currentStatus === 1 ? 0 : 1;
     try {
       const response = await axios.put(`${import.meta.env.VITE_ACTIVATE_DEACTIVATE_USER}/${userId}`, {
-                status: newStatus,
-        });
+        status: newStatus,
+      });
       if (response.data.success) {
-        setUsers(users.map(user => 
+        setUsers(users.map(user =>
           user.id === userId ? { ...user, status: newStatus } : user
         ));
       }
@@ -140,12 +163,13 @@ function Users() {
             <Form.Select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
               <option value="All">All Roles</option>
               <option value="admin">Admin</option>
-              <option value="user">User</option>
+              <option value="physician">Physician</option>
+              <option value="student">Student</option>
               <option value="staff">Staff</option>
             </Form.Select>
           </Col>
           <Col md={3} className="d-flex justify-content-end align-items-center">
-            <Button variant='dark' onClick={() => setShowAddModal(true)}>
+            <Button variant='success' onClick={() => setShowAddModal(true)}>
               <i className="bi bi-plus-circle me-2"></i> Add New User
             </Button>
           </Col>
@@ -186,11 +210,8 @@ function Users() {
                   </td>
                   <td>{FormatDate(user.created_at)}</td>
                   <td className="text-center">
-                    <Button variant="warning" size="sm" className="me-2" onClick={() => handleEdit(user)}>
+                    <Button variant="warning" size="sm" className="me-2" onClick={() => handleEditClick(user)}>
                       <i className="bi bi-pencil"></i>
-                    </Button>
-                    <Button variant="danger" size="sm" onClick={() => handleDelete(user.id)}>
-                      <i className="bi bi-trash"></i>
                     </Button>
                   </td>
                 </tr>
@@ -212,20 +233,32 @@ function Users() {
         />
       </Card>
 
-      <AddUserModal
+      {/* <AddUserModal
         show={showAddModal}
         onHide={() => setShowAddModal(false)}
         onSubmit={handleAddSubmit}
         newUser={newUser}
         handleChange={handleAddChange}
-      />
+      /> */}
 
-      <EditUserModal
+      {/* <EditUserModal
         show={showEditModal}
         onHide={() => setShowEditModal(false)}
         onSave={handleEditSubmit}
         user={selectedUser || newUser}
         handleChange={handleEditChange}
+      /> */}
+
+    <AddUserModal
+        show={showAddModal}
+        handleClose={() => setShowAddModal(false)}
+        onSave={handleSave}
+      />
+      <EditUserModal
+        show={showEditModal}
+        handleClose={() => setShowEditModal(false)}
+        initialData={selectedPatient}
+        onSave={handleSave}
       />
     </Container>
   );
