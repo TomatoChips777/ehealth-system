@@ -7,6 +7,41 @@ const runQuery = (query, values = []) => {
     return db.queryAsync(query, values);
 };
 
+// 🔔 Notify Admins, Staff, and Owner if available
+async function notifyAdminsStaffAndOwner(title, message, ownerId = null) {
+    try {
+        const notificationResult = await db.queryAsync(
+            'INSERT INTO notifications (title, message, created_at) VALUES (?, ?, NOW())',
+            [title, message]
+        );
+        const notificationId = notificationResult.insertId;
+
+        const users = await db.queryAsync(
+            'SELECT id FROM users WHERE role IN (?, ?) AND status = 1',
+            ['Admin', 'Staff', 'Physician']
+        );
+
+        const receivers = users.map(user => [notificationId, user.id, 0, null]);
+
+        if (ownerId) {
+            const ownerAlreadyIncluded = users.some(user => user.id === ownerId);
+            if (!ownerAlreadyIncluded) {
+                receivers.push([notificationId, ownerId, 0, null]);
+            }
+        }
+
+        if (receivers.length > 0) {
+            await db.queryAsync(
+                'INSERT INTO notification_receivers (notification_id, user_id, is_read, read_at) VALUES ?',
+                [receivers]
+            );
+        }
+
+    } catch (err) {
+        console.error("Error sending notifications:", err);
+    }
+}
+
 // Get all patients
 router.get('/', async (req, res) => {
     const query = `SELECT s.*, u.name, u.email FROM students s JOIN users u on u.id = s.user_id WHERE u.role = "student" ORDER BY full_name`;
@@ -19,7 +54,18 @@ router.get('/', async (req, res) => {
         res.status(500).json({ success: false, message: 'Error fetching data' });
     }
 });
+router.get('/get-user-details/:user_id', async (req, res) => {
+    const {user_id} = req.params;
+    const query = `SELECT s.*, u.name, u.email, u.username FROM students s JOIN users u on u.id = s.user_id WHERE u.id = ?  ORDER BY full_name`;
 
+    try {
+        const rows = await runQuery(query, user_id);
+        res.json(rows);
+    } catch (err) {
+        console.error("Error fetching all students:", err);
+        res.status(500).json({ success: false, message: 'Error fetching data' });
+    }
+});
 router.get('/get-student-logs/:user_id', async (req, res) => {
 
     const { user_id } = req.params;
@@ -90,6 +136,12 @@ router.post('/add-annual-physical-exam', async (req, res) => {
 
         // Insert multiple findings into the physical_exam_findings table
         await runQuery(findingsQuery, [findingsData]);
+        await notifyAdminsStaffAndOwner(
+            'Annual Physical Exam Created',
+            `An annual physical exam record has been created for a student (User ID: ${patient_id}).`,
+            patient_id
+          );
+          req.io.emit("updateNotifications");
         req.io.emit("updateAPE");
         // Respond with success message
         res.status(200).json({ success: true, message: 'Annual physical exam added successfully' });
@@ -167,6 +219,12 @@ router.put('/update-annual-physical-exam/:id', async (req, res) => {
 
         // Insert the updated findings into the physical_exam_findings table
         await runQuery(findingsQuery, [findingsData]);
+        await notifyAdminsStaffAndOwner(
+            'Annual Physical Exam Updated',
+            `An annual physical exam record has been updated for a student (User ID: ${patient_id}).`,
+            patient_id
+          );
+          req.io.emit("updateNotifications");
         req.io.emit("updateAPE");
         // Respond with success message
         res.status(200).json({ success: true, message: 'Annual physical exam updated successfully' });
@@ -282,7 +340,13 @@ router.post('/add-student-log', async (req, res) => {
 
     try {
         await runQuery(insertQuery, values);
-        req.io.emit("updateAppointment");
+        await notifyAdminsStaffAndOwner(
+            'New Student Consultation Log',
+            `A new consultation entry has been logged for a student (User ID: ${user_id}).`,
+            user_id
+          );
+          req.io.emit("updateNotifications");
+        req.io.emit("updatStudentLogs");
         res.status(200).json({ success: true, message: 'Student log added successfully.' });
     } catch (err) {
         console.error('Error adding student log:', err);

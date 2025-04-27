@@ -1,4 +1,5 @@
 import { Container, Row, Col, Card, Button } from 'react-bootstrap';
+import { Link } from 'react-router-dom'; // 👈 Import Link
 
 function Home() {
   return (
@@ -14,19 +15,25 @@ function Home() {
 
               <Row className="text-center">
                 <Col md={4} className="mb-3">
-                  <Button variant="primary" className="w-100" size="lg">
-                    View Profile
-                  </Button>
+                  <Link to="/student-prescriptions">
+                    <Button variant="primary" className="w-100" size="lg">
+                      View Prescriptions
+                    </Button>
+                  </Link>
                 </Col>
                 <Col md={4} className="mb-3">
-                  <Button variant="success" className="w-100" size="lg">
-                    Medical Records
-                  </Button>
+                  <Link to="/student-details">
+                    <Button variant="success" className="w-100" size="lg">
+                      Medical Records
+                    </Button>
+                  </Link>
                 </Col>
                 <Col md={4} className="mb-3">
-                  <Button variant="info" className="w-100" size="lg">
-                    Book Appointment
-                  </Button>
+                  <Link to="/student-appointment">
+                    <Button variant="info" className="w-100" size="lg">
+                      Book Appointment
+                    </Button>
+                  </Link>
                 </Col>
               </Row>
 

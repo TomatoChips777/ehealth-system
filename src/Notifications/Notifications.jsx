@@ -77,13 +77,17 @@ function Notifications() {
 
   const handleMarkAsRead = async () => {
     if (selectedNotification && !selectedNotification.is_read) {
+      console.log(selectedNotification);
       try {
-        await axios.put(`$${import.meta.env.VITE_GET_NOTIFICATIONS}/${user.id}/notifications/${selectedNotification.id}/read`);
+        
+        
+        await axios.put(`${import.meta.env.VITE_GET_NOTIFICATIONS}/${user.id}/notifications/${selectedNotification.id}/read`);
         const updatedNotifications = notifications.map(notification =>
           notification.id === selectedNotification.id ? { ...notification, is_read: true } : notification
         );
         setNotifications(updatedNotifications);
         filterNotifications(filter, searchTerm);
+        setShowModal(false);
       } catch (error) {
         console.error("Error marking notification as read:", error);
       }
@@ -131,7 +135,7 @@ function Notifications() {
             filteredNotifications.map(notification => (
               <Card
                 key={notification.id}
-                className={`mb-3 shadow-sm border-start border-1 ${notification.is_read ? 'border-secondary bg-white' : 'border-primary bg-light'}`}
+                className={`mb-3 shadow-sm border-start border-1 ${notification.is_read ? 'border-secondary bg-white' : 'border-success bg-light'}`}
                 style={{ cursor: 'pointer', borderRadius: '10px' }}
                 onClick={() => handleNotificationClick(notification)}
               >

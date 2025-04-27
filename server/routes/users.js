@@ -35,11 +35,16 @@ router.post('/login', async (req, res) => {
             const profileDir = 'uploads/profile/';
             const imageFileName = await downloadImage(picture, profileDir);
 
-            await db.queryAsync(
-                'INSERT INTO users (name, email, role, image_url, status) VALUES (?, ?, ?, ?, ?)',
-                [name, email, 'student', `profile/${imageFileName}`, 1]
+            const userResult =  await db.queryAsync(
+                'INSERT INTO users (name, email, username, role, image_url, status ) VALUES (?, ?, ?, ?, ?, ?)',
+                [name, email,email, 'student', `profile/${imageFileName}`, 1]
             );
+            const userId = userResult.insertId;
 
+            await db.queryAsync(
+                'INSERT INTO students (user_id, full_name, email) VALUES ( ?, ?, ?)',
+                [userId,name, email],
+            );
             const newUser = await db.queryAsync('SELECT id, name, email, role, image_url FROM users WHERE email = ?', [email]);
             return res.json(newUser[0]);
         } else {

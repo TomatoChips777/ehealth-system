@@ -28,6 +28,11 @@ import MedicineInventory from './Inventory/MedicineInventory';
 import SupplyInventory from './Inventory/SupplyInventory';
 import EquipmentInventory from './Inventory/EquipmentIventory';
 import Registration from './Registration';
+import Home from './Students/Home';
+import StudentAppointmentPage from './Students/StudentAppointmentPage';
+import Records from './Students/Records';
+import StudentPrescriptions from './Students/Presciption';
+import VisitLogs from './Students/VisitLogs';
 
 function App() {
   const [chatMessage, setChatMessage] = useState('');
@@ -57,6 +62,12 @@ function App() {
       '/medicines': 'Medicines',
       '/supply': 'Supply',
       '/equipment': 'Equipments',
+      '/home': 'Home',
+      '/student-appointment': 'My Appointments',
+      '/student-details': 'My Records',
+      '/student-prescriptions': 'My Prescriptions',
+      '/student-logs': 'My Visit Logs'
+
     };
 
     setActiveLink(routeMap[path] || 'Dashboard');
@@ -138,6 +149,20 @@ function App() {
                     <Route path="*" element={<Navigate to="/medicines" />} />
                   </>
                 )}
+
+                {role === 'Student' && (
+
+                  <>
+                    <Route path="/home" element={<Home handleAskButton={handleAskButton} />} />
+                    <Route path='/student-appointment' element={<StudentAppointmentPage/>} />
+                    <Route path='/student-details' element={<Records/>} />
+                    <Route path='/student-prescriptions' element={<StudentPrescriptions/>} />
+                    <Route path='/student-logs' element={<VisitLogs/>} />
+                  
+                    <Route path="/notifications" element={<Notifications handleAskButton={handleAskButton} />} />
+                    <Route path="*" element={<Navigate to="/home" />} />
+                  </>
+                )}
               </Routes>
             </div>
           </div>
@@ -145,7 +170,7 @@ function App() {
       ) : (
         <Routes>
           <Route path="/" element={<LoginScreen />} />
-          <Route path='/registration' element={<Registration/>} />
+          <Route path='/registration' element={<Registration />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       )}

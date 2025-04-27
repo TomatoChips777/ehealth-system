@@ -1,182 +1,211 @@
 import React, { useEffect, useState } from 'react';
-import { Container, Table, Button, Form } from 'react-bootstrap';
+import { Container, Table, Button, Form, Card } from 'react-bootstrap';
 import axios from 'axios';
-
+import { exportToPDF } from './components/ConvertToPDF';
 function EquipmentInventory() {
-  const [equipments, setEquipments] = useState([
-   
-  ]);
+    const [equipments, setEquipments] = useState([
+
+    ]);
 
 
-  const fetchEquipments= async ()=>{
-    try{
-        const response = await axios.get(`${import.meta.env.VITE_GET_EQUIPMENTS}`)
-        setEquipments(response.data);
+    const fetchEquipments = async () => {
+        try {
+            const response = await axios.get(`${import.meta.env.VITE_GET_EQUIPMENTS}`)
+            setEquipments(response.data);
 
-    }catch(error){
+        } catch (error) {
 
+        }
     }
-  }
 
-  useEffect(() =>{
-    fetchEquipments();
-  },[]);
+    useEffect(() => {
+        fetchEquipments();
+    }, []);
 
-  const handleInputChange = async (index, field, value) => {
-    const updatedEquipments = [...equipments];
-    updatedEquipments[index][field] = value;
-    setEquipments(updatedEquipments);
+    const handleInputChange = async (index, field, value) => {
+        const updatedEquipments = [...equipments];
+        updatedEquipments[index][field] = value;
+        setEquipments(updatedEquipments);
 
-    // Sync only the edited row
-    const editedRow = updatedEquipments[index];
+        // Sync only the edited row
+        const editedRow = updatedEquipments[index];
 
-    try {
-      await axios.post(`${import.meta.env.VITE_UPDATE_EQUIPMENT_ROW}`, { equipment: editedRow });
-      console.log('Single row synced successfully');
-    } catch (error) {
-      console.error('Error syncing single row:', error);
-    }
-  };
-
-  const addNewRow = async () => {
-    const newEquipment = {
-      name: '',
-      january: 0,
-      february: 0,
-      march: 0,
-      april: 0,
-      may: 0,
-      june: 0,
-      july: 0,
-      august: 0,
-      september: 0,
-      october: 0,
-      november: 0,
-      december: 0,
-      year: new Date().getFullYear(),
-      remarks: ''
+        try {
+            await axios.post(`${import.meta.env.VITE_UPDATE_EQUIPMENT_ROW}`, { equipment: editedRow });
+            console.log('Single row synced successfully');
+        } catch (error) {
+            console.error('Error syncing single row:', error);
+        }
     };
 
-    const updated = [...equipments, newEquipment];
-    try{
-        const response = await axios.post(`${import.meta.env.VITE_ADD_EQUIPMENT}`,{equipment: newEquipment } );
-       fetchEquipments();
-    }catch(error){
-    }
+    const addNewRow = async () => {
+        const newEquipment = {
+            name: '',
+            january: 0,
+            february: 0,
+            march: 0,
+            april: 0,
+            may: 0,
+            june: 0,
+            july: 0,
+            august: 0,
+            september: 0,
+            october: 0,
+            november: 0,
+            december: 0,
+            year: new Date().getFullYear(),
+            remarks: ''
+        };
 
+        const updated = [...equipments, newEquipment];
+        try {
+            const response = await axios.post(`${import.meta.env.VITE_ADD_EQUIPMENT}`, { equipment: newEquipment });
+            fetchEquipments();
+        } catch (error) {
+        }
+    };
+    const handleDownloadPDF = () => {
+        const columns = [
+          'Equipment/Item', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Year', 'Remarks'
+        ];
+        const data = equipments.map(e => [
+          e.name,
+          e.august,
+          e.september,
+          e.october,
+          e.november,
+          e.december,
+          e.january,
+          e.february,
+          e.march,
+          e.april,
+          e.may,
+          e.june,
+          e.july,
+          e.year,
+          e.remarks
+        ]);
     
-  };
+        exportToPDF('Equipment Inventory', columns, data, 'equipment-inventory.pdf');
+      };
+    const removeRow = async (index) => {
+        const equipmentToDelete = equipments[index];
+        const updated = equipments.filter((_, idx) => idx !== index);
+        setEquipments(updated);
 
-  const removeRow = async (index) => {
-    const equipmentToDelete = equipments[index];
-    const updated = equipments.filter((_, idx) => idx !== index);
-    setEquipments(updated);
+        if (equipmentToDelete.id) {
+            try {
+                await axios.put(`${import.meta.env.VITE_REMOVE_EQUIPMENT_ROW}`, { id: equipmentToDelete.id });
+                console.log('Deleted from DB successfully');
+            } catch (error) {
+                console.error('Error deleting row:', error);
+            }
+        }
+    };
 
-    if (equipmentToDelete.id) {
-      try {
-        await axios.put(`${import.meta.env.VITE_REMOVE_EQUIPMENT_ROW}`, { id: equipmentToDelete.id });
-        console.log('Deleted from DB successfully');
-      } catch (error) {
-        console.error('Error deleting row:', error);
-      }
-    }
-  };
+    return (
+        <Container fluid className="mt-4">
+            <Card className="shadow-sm ">
+                <Card.Header className='d-flex justify-content-between'>
+                    <h4 className="mb-3 fw-bold text-success">Equipment Inventory</h4>
+                    <div className="text-end">
+                        <Button variant="success" onClick={addNewRow}>
+                            + Add Equipment
+                        </Button>
+                        <Button variant="primary"  className="ms-1" onClick={handleDownloadPDF}>
+                Download PDF
+              </Button>
+                    </div>
+                </Card.Header>
+                <Card.Body>
+                    <div className="table-responsive">
+                        <Table bordered striped hover size="sm" className="excel-like-table">
+                            <thead className="table-light text-center align-middle">
+                                <tr>
+                                    <th>EQUIPMENT/ITEM</th>
+                                    <th>Aug</th>
+                                    <th>Sep</th>
+                                    <th>Oct</th>
+                                    <th>Nov</th>
+                                    <th>Dec</th>
+                                    <th>Jan</th>
+                                    <th>Feb</th>
+                                    <th>Mar</th>
+                                    <th>Apr</th>
+                                    <th>May</th>
+                                    <th>Jun</th>
+                                    <th>Jul</th>
+                                    <th>Year</th>
+                                    <th>Remarks</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {equipments.map((equipment, idx) => (
+                                    <tr key={idx}>
+                                        <td style={{ minWidth: '250px' }}>
+                                            <Form.Control
+                                                type="text"
+                                                size="sm"
+                                                className="no-border text-start"
+                                                value={equipment.name}
+                                                onChange={(e) => handleInputChange(idx, 'name', e.target.value)}
+                                            />
+                                        </td>
 
-  return (
-    <Container fluid className="mt-4">
-      <h4 className="mb-3 fw-bold text-success">Equipment Inventory</h4>
+                                        {[
+                                            'august', 'september', 'october', 'november', 'december', 'january', 'february', 'march', 'april', 'may', 'june',
+                                            'july',
+                                        ].map((month) => (
+                                            <td key={month}>
+                                                <Form.Control
+                                                    type="text"
+                                                    size="sm"
+                                                    className="no-border text-center fw-bold"
+                                                    value={equipment[month]}
+                                                    onChange={(e) => handleInputChange(idx, month, parseInt(e.target.value) || 0)}
+                                                />
+                                            </td>
+                                        ))}
+                                        <td>
+                                            <Form.Control
+                                                type="number"
+                                                size="sm"
+                                                className="no-border text-center"
+                                                value={equipment.year}
+                                                onChange={(e) => handleInputChange(idx, 'year', parseInt(e.target.value) || new Date().getFullYear())}
+                                            />
+                                        </td>
 
-      <div className="table-responsive">
-        <Table bordered striped hover size="sm" className="excel-like-table">
-          <thead className="table-light text-center align-middle">
-            <tr>
-              <th>EQUIPMENT/ITEM</th>
-              <th>Aug</th>
-              <th>Sep</th>
-              <th>Oct</th>
-              <th>Nov</th>
-              <th>Dec</th>
-              <th>Jan</th>
-              <th>Feb</th>
-              <th>Mar</th>
-              <th>Apr</th>
-              <th>May</th>
-              <th>Jun</th>
-              <th>Jul</th>
-              <th>Year</th>
-              <th>Remarks</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {equipments.map((equipment, idx) => (
-              <tr key={idx}>
-               <td style={{ minWidth: '250px' }}>
-                  <Form.Control
-                    type="text"
-                    size="sm"
-                    className="no-border text-start"
-                    value={equipment.name}
-                    onChange={(e) => handleInputChange(idx, 'name', e.target.value)}
-                  />
-                </td>
+                                        <td>
+                                            <Form.Control
+                                                type="text"
+                                                size="sm"
+                                                className="no-border"
+                                                value={equipment.remarks}
+                                                onChange={(e) => handleInputChange(idx, 'remarks', e.target.value)}
+                                            />
+                                        </td>
 
-                {[
-                  'august', 'september', 'october', 'november', 'december','january', 'february', 'march', 'april', 'may', 'june',
-                  'july', 
-                ].map((month) => (
-                  <td key={month}>
-                    <Form.Control
-                      type="text"
-                      size="sm"
-                      className="no-border text-center fw-bold"
-                      value={equipment[month]}
-                      onChange={(e) => handleInputChange(idx, month, parseInt(e.target.value) || 0)}
-                    />
-                  </td>
-                ))}
-                <td>
-                  <Form.Control
-                    type="number"
-                    size="sm"
-                    className="no-border text-center"
-                    value={equipment.year}
-                    onChange={(e) => handleInputChange(idx, 'year', parseInt(e.target.value) || new Date().getFullYear())}
-                  />
-                </td>
+                                        <td className="text-center">
+                                            <Button
+                                                variant="danger"
+                                                size="sm"
+                                                onClick={() => removeRow(idx)}
+                                            >
+                                                Delete
+                                            </Button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </Table>
+                    </div>
 
-                <td>
-                  <Form.Control
-                    type="text"
-                    size="sm"
-                    className="no-border"
-                    value={equipment.remarks}
-                    onChange={(e) => handleInputChange(idx, 'remarks', e.target.value)}
-                  />
-                </td>
 
-                <td className="text-center">
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    onClick={() => removeRow(idx)}
-                  >
-                    Delete
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      </div>
-
-      <div className="text-end">
-        <Button variant="success" onClick={addNewRow}>
-          + Add Equipment
-        </Button>
-      </div>
-
-      <style jsx="true">{`
+                </Card.Body>
+            </Card>
+            <style jsx="true">{`
         input[type="number"]::-webkit-inner-spin-button,
         input[type="number"]::-webkit-outer-spin-button {
           -webkit-appearance: none;
@@ -203,8 +232,8 @@ function EquipmentInventory() {
           outline: none;
         }
       `}</style>
-    </Container>
-  );
+        </Container>
+    );
 }
 
 export default EquipmentInventory;

@@ -44,6 +44,7 @@ router.get('/get-all-notifications/:userId', async (req, res) => {
 //  endpoint to mark notification as read
 router.put('/:userId/notifications/:id/read', async (req, res) => {
     const { userId, id } = req.params;
+
     try {
       // Update the notification status for this specific user in the notification_receivers table
       await db.query('UPDATE notification_receivers SET is_read = true WHERE user_id = ? AND notification_id = ?', [userId, id]);

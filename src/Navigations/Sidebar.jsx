@@ -85,7 +85,13 @@ function Sidebar({ sidebarOpen, activeLink, handleLinkClick, role }) {
       Consultations: '/consultation',
       Medicines: '/medicines',
       Equipments: '/equipment',
-      Supply: '/supply'
+      Supply: '/supply',
+      Home: '/home',
+     'My Appointments': '/student-appointment',
+     'My Records': '/student-details',
+      'My Prescriptions': '/student-prescriptions',
+      'My Visit Logs': '/student-logs',
+
     };
     navigate(routeMap[key]);
   };
@@ -100,17 +106,27 @@ function Sidebar({ sidebarOpen, activeLink, handleLinkClick, role }) {
     { key: 'Medicines', icon: 'capsule' },
     { key: 'Supply', icon: 'boxes' },
     { key: 'Equipments', icon: 'tools' },
+    {key: 'Home', icon: 'house'},
+    {key: 'My Appointments', icon: 'calendar-week'},
+    {key: 'My Records', icon: 'file-earmark-medical'},
+    {key: 'My Prescriptions', icon: 'prescription'},
+    {key: 'My Visit Logs', icon: 'file-earmark-text'},
     { key: 'Notifications', icon: 'bell' },
   ];
 
   // Filter links based on role
   const roleBasedLinks = {
-    Admin: allLinks,
+    Admin: allLinks.filter(link =>
+      ['Dashboard','Users' ,'Patients', 'Appointment', 'Consultations', 'Prescriptions', 'Medicines', 'Supply', 'Equipments', 'Notifications'].includes(link.key)
+    ),
     Physician: allLinks.filter(link =>
       ['Dashboard', 'Patients', 'Appointment', 'Consultations', 'Prescriptions', 'Medicines', 'Supply', 'Equipments', 'Notifications'].includes(link.key)
     ),
     Staff: allLinks.filter(link =>
       ['Medicines', 'Supply', 'Equipments'].includes(link.key)
+    ),
+    Student: allLinks.filter(link =>
+      ['Home','Notifications', 'My Appointments', 'My Records', 'My Prescriptions', 'My Visit Logs'].includes(link.key)
     ),
   };
 

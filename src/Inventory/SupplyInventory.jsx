@@ -1,181 +1,212 @@
 import React, { useEffect, useState } from 'react';
-import { Container, Table, Button, Form } from 'react-bootstrap';
+import { Container, Table, Button, Form, Card } from 'react-bootstrap';
 import axios from 'axios';
-
+import { exportToPDF } from './components/ConvertToPDF';
 function SupplyInventory() {
-  const [supplies, setSupplies] = useState([
-   
-  ]);
+    const [supplies, setSupplies] = useState([
 
+    ]);
 
-  const fetchSupplies= async ()=>{
-    try{
-        const response = await axios.get(`${import.meta.env.VITE_GET_SUPPLIES}`)
-        setSupplies(response.data);
-    }catch(error){
+    const fetchSupplies = async () => {
+        try {
+            const response = await axios.get(`${import.meta.env.VITE_GET_SUPPLIES}`)
+            setSupplies(response.data);
+        } catch (error) {
 
+        }
     }
-  }
 
-  useEffect(() =>{
-    fetchSupplies();
-  },[]);
+    useEffect(() => {
+        fetchSupplies();
+    }, []);
 
-  const handleInputChange = async (index, field, value) => {
-    const updatedSupplies = [...supplies];
-    updatedSupplies[index][field] = value;
-    setSupplies(updatedSupplies);
+    const handleInputChange = async (index, field, value) => {
+        const updatedSupplies = [...supplies];
+        updatedSupplies[index][field] = value;
+        setSupplies(updatedSupplies);
 
-    // Sync only the edited row
-    const editedRow = updatedSupplies[index];
+        // Sync only the edited row
+        const editedRow = updatedSupplies[index];
 
-    try {
-      await axios.post(`${import.meta.env.VITE_UPDATE_SUPPLY_ROW}`, { supply: editedRow });
-      console.log('Single row synced successfully');
-    } catch (error) {
-      console.error('Error syncing single row:', error);
-    }
-  };
-
-  const addNewRow = async () => {
-    const newSupply = {
-      name: '',
-      january: 0,
-      february: 0,
-      march: 0,
-      april: 0,
-      may: 0,
-      june: 0,
-      july: 0,
-      august: 0,
-      september: 0,
-      october: 0,
-      november: 0,
-      december: 0,
-      year: new Date().getFullYear(),
-      remarks: ''
+        try {
+            await axios.post(`${import.meta.env.VITE_UPDATE_SUPPLY_ROW}`, { supply: editedRow });
+            console.log('Single row synced successfully');
+        } catch (error) {
+            console.error('Error syncing single row:', error);
+        }
     };
 
-    const updated = [...supplies, newSupply];
-    try{
-        const response = await axios.post(`${import.meta.env.VITE_ADD_SUPPLY}`,{supply: newSupply } );
-       fetchSupplies();
-    }catch(error){
-    }
+    const addNewRow = async () => {
+        const newSupply = {
+            name: '',
+            january: 0,
+            february: 0,
+            march: 0,
+            april: 0,
+            may: 0,
+            june: 0,
+            july: 0,
+            august: 0,
+            september: 0,
+            october: 0,
+            november: 0,
+            december: 0,
+            year: new Date().getFullYear(),
+            remarks: ''
+        };
 
-    
-  };
+        const updated = [...supplies, newSupply];
+        try {
+            const response = await axios.post(`${import.meta.env.VITE_ADD_SUPPLY}`, { supply: newSupply });
+            fetchSupplies();
+        } catch (error) {
+        }
 
-  const removeRow = async (index) => {
-    const supplyToDelete = supplies[index];
-    const updated = supplies.filter((_, idx) => idx !== index);
-    setSupplies(updated);
 
-    if (supplyToDelete.id) {
-      try {
-        await axios.put(`${import.meta.env.VITE_REMOVE_SUPPLY_ROW}`, { id: supplyToDelete.id });
-        console.log('Deleted from DB successfully');
-      } catch (error) {
-        console.error('Error deleting row:', error);
-      }
-    }
-  };
+    };
 
-  return (
-    <Container fluid className="mt-4">
-      <h4 className="mb-3 fw-bold text-success">Supply Inventory</h4>
+    const handleDownloadPDF = () => {
+        const columns = [
+            'Supply', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Year', 'Remarks'
+        ];
+        const data = supplies.map(e => [
+            e.name,
+            e.august,
+            e.september,
+            e.october,
+            e.november,
+            e.december,
+            e.january,
+            e.february,
+            e.march,
+            e.april,
+            e.may,
+            e.june,
+            e.july,
+            e.year,
+            e.remarks
+        ]);
 
-      <div className="table-responsive">
-        <Table bordered striped hover size="sm" className="excel-like-table">
-          <thead className="table-light text-center align-middle">
-            <tr>
-              <th>SUPPLY</th>
-              <th>Aug</th>
-              <th>Sep</th>
-              <th>Oct</th>
-              <th>Nov</th>
-              <th>Dec</th>
-              <th>Jan</th>
-              <th>Feb</th>
-              <th>Mar</th>
-              <th>Apr</th>
-              <th>May</th>
-              <th>Jun</th>
-              <th>Jul</th>
-              <th>Year</th>
-              <th>Remarks</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {supplies.map((supply, idx) => (
-              <tr key={idx}>
-               <td style={{ minWidth: '250px' }}>
-                  <Form.Control
-                    type="text"
-                    size="sm"
-                    className="no-border text-start"
-                    value={supply.name}
-                    onChange={(e) => handleInputChange(idx, 'name', e.target.value)}
-                  />
-                </td>
+        exportToPDF('Supply Inventory', columns, data, 'supply-inventory.pdf');
+    };
+    const removeRow = async (index) => {
+        const supplyToDelete = supplies[index];
+        const updated = supplies.filter((_, idx) => idx !== index);
+        setSupplies(updated);
 
-                {[
-                   'august', 'september', 'october', 'november', 'december','january', 'february', 'march', 'april', 'may', 'june',
-                  'july',
-                ].map((month) => (
-                  <td key={month}>
-                    <Form.Control
-                      type="text"
-                      size="sm"
-                      className="no-border text-center fw-bold"
-                      value={supply[month]}
-                      onChange={(e) => handleInputChange(idx, month, parseInt(e.target.value) || 0)}
-                    />
-                  </td>
-                ))}
-                <td>
-                  <Form.Control
-                    type="number"
-                    size="sm"
-                    className="no-border text-center"
-                    value={supply.year}
-                    onChange={(e) => handleInputChange(idx, 'year', parseInt(e.target.value) || new Date().getFullYear())}
-                  />
-                </td>
+        if (supplyToDelete.id) {
+            try {
+                await axios.put(`${import.meta.env.VITE_REMOVE_SUPPLY_ROW}`, { id: supplyToDelete.id });
+                console.log('Deleted from DB successfully');
+            } catch (error) {
+                console.error('Error deleting row:', error);
+            }
+        }
+    };
 
-                <td>
-                  <Form.Control
-                    type="text"
-                    size="sm"
-                    className="no-border"
-                    value={supply.remarks}
-                    onChange={(e) => handleInputChange(idx, 'remarks', e.target.value)}
-                  />
-                </td>
+    return (
+        <Container fluid className="mt-4">
+            <Card className="shadow-sm ">
+                <Card.Header className='d-flex justify-content-between'>
+                    <h4 className="mb-3 fw-bold text-success">Supply Inventory</h4>
+                    <div className="text-end">
+                        <Button variant="success" onClick={addNewRow}>
+                            + Add Supply
+                        </Button>
+                    </div>
+                    <Button variant="primary" className="ms-1" onClick={handleDownloadPDF}>
+                        Download PDF
+                    </Button>
+                </Card.Header>
+                <Card.Body>
+                    <div className="table-responsive">
+                        <Table bordered striped hover size="sm" className="excel-like-table">
+                            <thead className="table-light text-center align-middle">
+                                <tr>
+                                    <th>SUPPLY</th>
+                                    <th>Aug</th>
+                                    <th>Sep</th>
+                                    <th>Oct</th>
+                                    <th>Nov</th>
+                                    <th>Dec</th>
+                                    <th>Jan</th>
+                                    <th>Feb</th>
+                                    <th>Mar</th>
+                                    <th>Apr</th>
+                                    <th>May</th>
+                                    <th>Jun</th>
+                                    <th>Jul</th>
+                                    <th>Year</th>
+                                    <th>Remarks</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {supplies.map((supply, idx) => (
+                                    <tr key={idx}>
+                                        <td style={{ minWidth: '250px' }}>
+                                            <Form.Control
+                                                type="text"
+                                                size="sm"
+                                                className="no-border text-start"
+                                                value={supply.name}
+                                                onChange={(e) => handleInputChange(idx, 'name', e.target.value)}
+                                            />
+                                        </td>
 
-                <td className="text-center">
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    onClick={() => removeRow(idx)}
-                  >
-                    Delete
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      </div>
+                                        {[
+                                            'august', 'september', 'october', 'november', 'december', 'january', 'february', 'march', 'april', 'may', 'june',
+                                            'july',
+                                        ].map((month) => (
+                                            <td key={month}>
+                                                <Form.Control
+                                                    type="text"
+                                                    size="sm"
+                                                    className="no-border text-center fw-bold"
+                                                    value={supply[month]}
+                                                    onChange={(e) => handleInputChange(idx, month, parseInt(e.target.value) || 0)}
+                                                />
+                                            </td>
+                                        ))}
+                                        <td>
+                                            <Form.Control
+                                                type="number"
+                                                size="sm"
+                                                className="no-border text-center"
+                                                value={supply.year}
+                                                onChange={(e) => handleInputChange(idx, 'year', parseInt(e.target.value) || new Date().getFullYear())}
+                                            />
+                                        </td>
 
-      <div className="text-end">
-        <Button variant="success" onClick={addNewRow}>
-          + Add Supply
-        </Button>
-      </div>
+                                        <td>
+                                            <Form.Control
+                                                type="text"
+                                                size="sm"
+                                                className="no-border"
+                                                value={supply.remarks}
+                                                onChange={(e) => handleInputChange(idx, 'remarks', e.target.value)}
+                                            />
+                                        </td>
 
-      <style jsx="true">{`
+                                        <td className="text-center">
+                                            <Button
+                                                variant="danger"
+                                                size="sm"
+                                                onClick={() => removeRow(idx)}
+                                            >
+                                                Delete
+                                            </Button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </Table>
+                    </div>
+
+
+                </Card.Body>
+            </Card>
+            <style jsx="true">{`
         input[type="number"]::-webkit-inner-spin-button,
         input[type="number"]::-webkit-outer-spin-button {
           -webkit-appearance: none;
@@ -202,8 +233,8 @@ function SupplyInventory() {
           outline: none;
         }
       `}</style>
-    </Container>
-  );
+        </Container>
+    );
 }
 
 export default SupplyInventory;
