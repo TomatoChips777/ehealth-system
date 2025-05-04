@@ -1,33 +1,33 @@
 import React, { useState } from 'react';
 import { Modal, Button, Form } from 'react-bootstrap';
 
-function AddInventoryModal({ show, onHide, onSubmit, newItem, handleChange }) {
+function AddMedicineModal({ show, onHide, onSubmit, newItem, handleChange }) {
   const [customCategory, setCustomCategory] = useState(false);
 
   const handleCategoryChange = (e) => {
     const selected = e.target.value;
-    handleChange(e); // Update the newItem state from parent
+    handleChange(e);
     setCustomCategory(selected === 'Other');
   };
 
   const categoryOptions = [
-    "Computers",
-    "Monitors",
-    "Keyboards",
-    "Mice",
-    "Printers",
-    "Networking",
-    "Software",
-    "Cables & Accessories",
-    "Office Equipment",
-    "Furniture",
+    "Antibiotic",
+    "Analgesic",
+    "Antiseptic",
+    "Antipyretic",
+    "Antacid",
+    "Antiviral",
+    "Vitamin",
+    "Supplement",
+    "Cough & Cold",
+    "Topical",
     "Other"
   ];
 
   return (
     <Modal show={show} onHide={onHide} centered size='lg'>
       <Modal.Header closeButton>
-        <Modal.Title>Add New Inventory Item</Modal.Title>
+        <Modal.Title>Add New Medicine</Modal.Title>
       </Modal.Header>
       <Modal.Body>
         <Form onSubmit={(e) => {
@@ -41,12 +41,12 @@ function AddInventoryModal({ show, onHide, onSubmit, newItem, handleChange }) {
           onSubmit(finalItem);
         }}>
 
-          <Form.Group className="mb-3" controlId="item_name">
-            <Form.Label>Item Name</Form.Label>
+          <Form.Group className="mb-3" controlId="medicine_name">
+            <Form.Label>Medicine Name</Form.Label>
             <Form.Control
               type="text"
-              name="item_name"
-              value={newItem.item_name}
+              name="medicine_name"
+              value={newItem.medicine_name}
               onChange={handleChange}
               required
             />
@@ -57,7 +57,7 @@ function AddInventoryModal({ show, onHide, onSubmit, newItem, handleChange }) {
             <Form.Select
               name="category"
               value={newItem.category}
-              onChange={handleCategoryChange} // ← Update this!
+              onChange={handleCategoryChange}
               required
             >
               <option value="">Select Category</option>
@@ -66,7 +66,6 @@ function AddInventoryModal({ show, onHide, onSubmit, newItem, handleChange }) {
               ))}
             </Form.Select>
           </Form.Group>
-
 
           {newItem.category === "Other" && (
             <Form.Group className="mb-3" controlId="customCategory">
@@ -81,7 +80,6 @@ function AddInventoryModal({ show, onHide, onSubmit, newItem, handleChange }) {
             </Form.Group>
           )}
 
-
           <Form.Group className="mb-3" controlId="quantity">
             <Form.Label>Quantity</Form.Label>
             <Form.Control
@@ -93,23 +91,20 @@ function AddInventoryModal({ show, onHide, onSubmit, newItem, handleChange }) {
             />
           </Form.Group>
 
-          <Form.Group className="mb-3" controlId="status">
-            <Form.Label>Status</Form.Label>
-            <Form.Select
-              name="status"
-              value={newItem.status}
+          <Form.Group className="mb-3" controlId="expiry_date">
+            <Form.Label>Expiry Date</Form.Label>
+            <Form.Control
+              type="date"
+              name="expiry_date"
+              value={newItem.expiry_date}
               onChange={handleChange}
               required
-            >
-              <option value="New">New</option>
-              <option value="Used">Used</option>
-              <option value="Old">Old</option>
-              <option value="Restored">Restored</option>
-            </Form.Select>
+            />
           </Form.Group>
 
+
           <Form.Group className="mb-3" controlId="serial_number">
-            <Form.Label>Serial Number (Optional)</Form.Label>
+            <Form.Label>Batch Number / Serial Number (Optional)</Form.Label>
             <Form.Control
               type="text"
               name="serial_number"
@@ -117,10 +112,11 @@ function AddInventoryModal({ show, onHide, onSubmit, newItem, handleChange }) {
               onChange={handleChange}
             />
           </Form.Group>
+
           <div className="d-flex justify-content-end">
-          <Button variant="primary" type="submit">
-            Add Item
-          </Button>
+            <Button variant="primary" type="submit">
+              Add Medicine
+            </Button>
           </div>
         </Form>
       </Modal.Body>
@@ -128,4 +124,4 @@ function AddInventoryModal({ show, onHide, onSubmit, newItem, handleChange }) {
   );
 }
 
-export default AddInventoryModal;
+export default AddMedicineModal;

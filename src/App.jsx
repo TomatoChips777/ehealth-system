@@ -24,16 +24,18 @@ import Consultation from './Consultation/ConsultationForm';
 import AnnualPhysicalExamForm from './Patients/components/AnnualPhysicalExamForm';
 import PatientDetails from './Patients/components/PatientDetails';
 import AppointmentPage from './Appointment/Appointment';
-import MedicineInventory from './Inventory/MedicineInventory';
-import SupplyInventory from './Inventory/SupplyInventory';
-import EquipmentInventory from './Inventory/EquipmentIventory';
+import EquipmentInventory from './Inventory/Equipments/EquipmentInventory';
 import Registration from './Registration';
 import Home from './Students/Home';
 import StudentAppointmentPage from './Students/StudentAppointmentPage';
 import Records from './Students/Records';
 import StudentPrescriptions from './Students/Presciption';
 import VisitLogs from './Students/VisitLogs';
-
+import MedicineInventory from './Inventory/Medicines/MedicineInventory';
+import MedicineMonthlyReport from './Inventory/Medicines/MonthlyReports';
+import SupplyInventory from './Inventory/Supplies/SupplyInventory';
+import SupplyMonthlyReport from './Inventory/Supplies/MonthlyReports';
+import EquipmentMonthlyReport from './Inventory/Equipments/MonthlyReports';
 function App() {
   const [chatMessage, setChatMessage] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -66,7 +68,10 @@ function App() {
       '/student-appointment': 'My Appointments',
       '/student-details': 'My Records',
       '/student-prescriptions': 'My Prescriptions',
-      '/student-logs': 'My Visit Logs'
+      '/student-logs': 'My Visit Logs',
+      '/medicines-monthly': 'Medicines',
+      '/supply-monthly': 'Supply',
+      '/equipment-monthly': 'Equipments',
 
     };
 
@@ -116,8 +121,11 @@ function App() {
                     <Route path="/events" element={<EventManager handleAskButton={handleAskButton} />} />
                     <Route path="/notifications" element={<Notifications handleAskButton={handleAskButton} />} />
                     <Route path="/medicines" element={<MedicineInventory handleAskButton={handleAskButton} />} />
+                    <Route path="/medicines-monthly" element={<MedicineMonthlyReport handleAskButton={handleAskButton} />} />
                     <Route path="/supply" element={<SupplyInventory handleAskButton={handleAskButton} />} />
+                    <Route path="/supply-monthly" element={<SupplyMonthlyReport handleAskButton={handleAskButton} />} />
                     <Route path="/equipment" element={<EquipmentInventory handleAskButton={handleAskButton} />} />
+                    <Route path="/equipment-monthly" element={<EquipmentMonthlyReport handleAskButton={handleAskButton} />} />
                     <Route path="*" element={<Navigate to="/" />} />
                   </>
                 )}

@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Modal, Button, Form, Spinner, Alert, Row, Col } from 'react-bootstrap';
 import axios from 'axios';
-
+import { useAuth } from '../../AuthContext';
 const AddUserModal = ({ show, handleClose, onSave }) => {
+  const { role } = useAuth();
+  const [fieldErrors, setFieldErrors] = useState({});
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -17,6 +19,7 @@ const AddUserModal = ({ show, handleClose, onSave }) => {
     address: '',
     contact_person: '',
     contact_person_number: '',
+    role: '',
   });
 
   const [loading, setLoading] = useState(false);
@@ -27,27 +30,102 @@ const AddUserModal = ({ show, handleClose, onSave }) => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setFieldErrors({}); // Reset field errors
 
     try {
       const response = await axios.post(`${import.meta.env.VITE_ADD_PATIENT}`, formData);
 
       if (response.data.success) {
-        onSave(); // Callback after successful save
-        handleClose(); // Close modal
+        onSave();
+        handleClose();
+        setFormData({
+          username: '',
+          password: '',
+          email: '',
+          student_id: '',
+          full_name: '',
+          course: '',
+          year: '',
+          birthdate: '',
+          sex: '',
+          contact_number: '',
+          address: '',
+          contact_person: '',
+          contact_person_number: '',
+          role: '',
+        })
+      } else if (response.data.errors) {
+        setFieldErrors(response.data.errors); 
       } else {
         setError(response.data.message || 'Failed to add patient.');
       }
     } catch (err) {
       console.error(err);
-      setError('Something went wrong.');
+      if (err.response?.data?.errors) {
+        setFieldErrors(err.response.data.errors);
+      } else if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else {
+        setError('Something went wrong.');
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
+  //   setLoading(true);
+  //   setError('');
+
+  //   try {
+  //     const response = await axios.post(`${import.meta.env.VITE_ADD_PATIENT}`, formData);
+
+  //     if (response.data.success) {
+  //       onSave();
+  //       handleClose();
+  //     } else {
+
+  //       setError(response.data.message || 'Failed to add patient.');
+  //     }
+  //   } catch (err) {
+  //     console.error(err);
+  //     if (err.response?.data?.message) {
+  //       setError(err.response.data.message); 
+  //     } else {
+  //       setError('Something went wrong.');
+  //     }
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
+  //   setLoading(true);
+  //   setError('');
+
+  //   try {
+  //     const response = await axios.post(`${import.meta.env.VITE_ADD_PATIENT}`, formData);
+
+  //     if (response.data.success) {
+  //       onSave(); // Callback after successful save
+  //       handleClose(); // Close modal
+  //     } else {
+  //       setError(response.data.message || 'Failed to add patient.');
+  //     }
+  //   } catch (err) {
+  //     console.error(err);
+  //     setError('Something went wrong.');
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   return (
     <Modal show={show} onHide={handleClose} centered size="xl">
@@ -71,6 +149,9 @@ const AddUserModal = ({ show, handleClose, onSave }) => {
                   onChange={handleChange}
                   required
                 />
+                <Form.Control.Feedback type="invalid">
+                  {fieldErrors.username}
+                </Form.Control.Feedback>
               </Form.Group>
             </Col>
 
@@ -99,6 +180,9 @@ const AddUserModal = ({ show, handleClose, onSave }) => {
                   onChange={handleChange}
                   required
                 />
+                <Form.Control.Feedback type="invalid">
+                  {fieldErrors.email}
+                </Form.Control.Feedback>
               </Form.Group>
             </Col>
 
@@ -113,6 +197,9 @@ const AddUserModal = ({ show, handleClose, onSave }) => {
                   onChange={handleChange}
                   required
                 />
+                <Form.Control.Feedback type="invalid">
+                  {fieldErrors.student_id}
+                </Form.Control.Feedback>
               </Form.Group>
             </Col>
 
@@ -241,8 +328,27 @@ const AddUserModal = ({ show, handleClose, onSave }) => {
                 />
               </Form.Group>
             </Col>
-          </Row>
 
+            {/* User type */}
+            {role === 'Admin' &&
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label>User Type</Form.Label>
+                  <Form.Select
+                    name="role"
+                    value={formData.role}
+                    onChange={handleChange}
+                  >
+                    <option value="">Select</option>
+                    <option value="Student">Student</option>
+                    <option value="Staff">Staff</option>
+                    <option value="Physician">Physician</option>
+                    <option value="Admin">Admin</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            }
+          </Row>
         </Modal.Body>
 
         <Modal.Footer>

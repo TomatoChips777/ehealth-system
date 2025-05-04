@@ -74,9 +74,6 @@ function StudentPrescriptions() {
                             {pres.prescriptions.map((med, medIdx) => (
                               <div key={medIdx} className="mb-1 fw-bold">
                                 {med.medicine}{' '}
-                                <small className="text-muted">
-                                  ({med.dosage} / {med.frequency}xday / {med.duration} days)
-                                </small>
                               </div>
                             ))}
                           </td>

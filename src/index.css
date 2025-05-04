@@ -181,3 +181,36 @@
 .autocomplete-item:hover {
   background-color: #f0f0f0;
 } */
+
+/* Add this in your CSS or global styles */
+.react-datepicker__day--highlighted-available {
+  background-color: #cce5ff;
+  color: #004085;
+  border-radius: 50% !important;
+  position: relative;
+}
+
+.react-datepicker__day--highlighted-available::after {
+  content: "📍"; /* or use a small colored dot or icon */
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  font-size: 10px;
+}
+
+
+.compact-calendar-cell {
+  width: 14.2%;
+  min-height: 80px;
+  font-size: 0.75rem;
+  padding: 0.25rem;
+  cursor: pointer;
+  overflow: hidden;
+}
+.event-tag {
+  font-size: 0.7rem;
+  padding: 2px 3px;
+  margin-bottom: 3px;
+  border-radius: 3px;
+  color: white;
+}

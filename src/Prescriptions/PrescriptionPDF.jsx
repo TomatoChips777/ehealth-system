@@ -1,5 +1,4 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 
 function generatePrescriptionPDF(student, prescriptions, notes) {
   const doc = new jsPDF({
@@ -23,53 +22,54 @@ function generatePrescriptionPDF(student, prescriptions, notes) {
   doc.text(`Name: ${student.full_name || ''}`, 10, 35);
   doc.text(`Age: ${calculateAge(student.birthdate) || ''}`, 160, 35);
   doc.text(`Sex: ${student.sex || ''}`, 185, 35);
-
   doc.text(`Address: ${student.address || '_________________________'}`, 10, 42);
-  doc.line(10, 44, 206, 44); 
+  doc.line(10, 44, 206, 44);
 
-  // RX symbol
+  // Rx Symbol
   doc.setFontSize(24);
   doc.text('Rx', 10, 55);
 
-  // Table of prescriptions
-  const tableData = prescriptions.map((prescription, index) => [
-    index + 1,
-    prescription.medicine,
-    prescription.dosage,
-    prescription.frequency,
-    prescription.duration
-  ]);
+  doc.setFontSize(11);
+  const startY = 65;
+  const columnHeight = 8;
+  const itemsPerColumn = 5;
+  const columnGap = 80;
+  const leftX = 20;
+  const topY = startY;
 
-  doc.autoTable({
-    startY: 60,
-    head: [['#', 'Medicine', 'Dosage', 'Frequency', 'Duration']],
-    body: tableData,
-    theme: 'grid',
-    styles: { font: 'Times', fontSize: 8 },
-    headStyles: { fillColor: [230, 230, 230] },
-    margin: { left: 10, right: 10 },
-    tableWidth: 'auto'
+  prescriptions.forEach((p, i) => {
+    const column = Math.floor(i / itemsPerColumn);
+    const row = i % itemsPerColumn;
+    const x = leftX + column * columnGap;
+    const y = topY + row * columnHeight;
+    doc.text(`${i + 1}. ${p.medicine}`, x, y);
   });
 
-  let finalY = doc.previousAutoTable.finalY || 80;
-
   // Notes
+  let notesY = topY + Math.min(prescriptions.length, itemsPerColumn) * columnHeight;
+  if (prescriptions.length > itemsPerColumn) {
+    notesY = topY + itemsPerColumn * columnHeight + 6;
+  } else {
+    notesY += 6;
+  }
+
   if (notes) {
     doc.setFont('Times', 'Bold');
     doc.setFontSize(10);
-    doc.text('Notes:', 10, finalY + 8);
+    doc.text('Notes:', 10, notesY);
+    notesY += 6;
 
     doc.setFont('Times', 'Normal');
     doc.setFontSize(9);
-    doc.text(doc.splitTextToSize(notes, 190), 15, finalY + 14);
+    const wrappedNotes = doc.splitTextToSize(notes, 190);
+    doc.text(wrappedNotes, 15, notesY);
   }
 
+  // Footer
   doc.setFont('Times', 'Normal');
   doc.setFontSize(9);
-
   doc.text('__________________, MD', 10, 128);
   doc.text('License No: _______________', 165, 128);
-
   doc.setFontSize(8);
   doc.text('School Physician', 15, 132);
 

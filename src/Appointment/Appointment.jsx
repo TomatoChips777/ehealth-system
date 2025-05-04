@@ -13,10 +13,13 @@ import {
 import FormatDate from '../extra/DateFormat';
 import { useNavigate } from 'react-router-dom';
 import AutoCompleteInput from './AutoCompleteInput';
+import AppoinmentCalendar from './Calendar';
+import AppointmentFormModal from './AppointmentFormModal';
+import RescheduleModal from './RescheduleModal';
+import { io } from 'socket.io-client';
 const AppointmentPage = ({ handleLinkClick }) => {
   const navigate = useNavigate();
   const [appointments, setAppointments] = useState([]);
-
   const [showModal, setShowModal] = useState(false);
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
@@ -25,15 +28,14 @@ const AppointmentPage = ({ handleLinkClick }) => {
   const [studentName, setStudentName] = useState('');
   const [complaint, setComplaint] = useState('');
   const [currentAppointment, setCurrentAppointment] = useState(null);
-
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [confirmMessage, setConfirmMessage] = useState('');
-
   const [searchQuery, setSearchQuery] = useState('');
-
+  const [availableDates, setAvailableDates] = useState([]);
   const [suggestedStudents, setSuggestedStudents] = useState([]);
+  
   const formatDateLocal = (isoString) => {
     const date = new Date(isoString);
     const year = date.getFullYear();
@@ -80,7 +82,6 @@ const AppointmentPage = ({ handleLinkClick }) => {
     }
   };
 
-
   const handleChange = async (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -89,7 +90,6 @@ const AppointmentPage = ({ handleLinkClick }) => {
       await searchStudents(value);
     }
   };
-
   const formatTime12Hour = (timeString) => {
     const [hour, minute] = timeString.split(':');
     const h = parseInt(hour, 10);
@@ -98,47 +98,86 @@ const AppointmentPage = ({ handleLinkClick }) => {
     return `${hour12.toString().padStart(2, '0')}:${minute} ${suffix}`;
   };
 
-  const timeSlots = [
-    '08:30:00', '09:00:00', '09:30:00', '10:00:00', '10:30:00',
-    '11:00:00', '11:30:00', '12:00:00', '12:30:00', '13:00:00',
-    '13:30:00', '14:00:00', '14:30:00', '15:00:00', '15:30:00',
-    '16:00:00', '16:30:00',
-  ];
+  const fetchAvailableDates = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_GET_AVAILABILITY}`);
 
+      const formattedDates = response.data.map(entry => formatDateLocal(entry.date));
+
+      setAvailableDates(formattedDates);
+
+    } catch (error) {
+      console.error('Error fetching available dates:', error);
+    }
+
+  };
+
+  const fetchAvailableTimes = async (date) => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_GET_AVAILABLE_TIMES}?date=${date}`);
+      
+      // Get all available slots from API
+      const availableSlots = response.data.availability
+        .filter(slot => slot.is_available === 1)
+        .map(slot => slot.time_slot);
+  
+      // Filter out time slots already booked on the selected date
+      const bookedTimes = appointments
+        .filter(app => formatLocalDate(app.date) === date)
+        .map(app => app.time);
+  
+      const filteredSlots = availableSlots.filter(time => !bookedTimes.includes(time));
+  
+      setAvailableTimes(filteredSlots);
+    } catch (error) {
+      console.error('Error fetching available times:', error);
+    }
+  };
+
+
+
+  const formatLocalDate = (date) => {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  
   const fetchAppointments = async () => {
     try {
       const response = await axios.get(`${import.meta.env.VITE_GET_APPOINTMENTS}`);
-      setAppointments(response.data);
+      const pendingAppointments = response.data.filter(appointment => appointment.status === 'pending');
+      setAppointments(pendingAppointments);
     } catch (error) {
       console.error('Error fetching appointments:', error);
     }
   };
+  
 
   useEffect(() => {
     fetchAppointments();
-  }, []);
+    fetchAvailableDates();
 
-  const isWeekday = (date) => {
-    const day = new Date(date).getDay();
-    return day !== 0 && day !== 6;
-  };
+    const socket = io(`${import.meta.env.VITE_API_URL}`);
+    socket.on('updateNotifications', () => {
+      fetchAppointments();
+      fetchAvailableDates();
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
 
   const handleDateChange = (e) => {
+    const date = e.target.value;
     const newDate = new Date(e.target.value);
-    if (isWeekday(newDate)) {
-      setSelectedDate(newDate);
-    } else {
-      alert('Please select a weekday');
-    }
+    setSelectedDate(newDate);
+    fetchAvailableTimes(date);
   };
 
-  // Ensure the displayed date uses local timezone formatting
-  const formatLocalDate = (date) => {
-    const localDate = new Date(date);
-    localDate.setMinutes(localDate.getMinutes() - localDate.getTimezoneOffset());
-    return localDate.toISOString().split('T')[0];
-  };
 
 
   const handleBookAppointment = async () => {
@@ -156,14 +195,12 @@ const AppointmentPage = ({ handleLinkClick }) => {
       complaint: complaint,
     };
 
-    console.log(newAppointment);
     try {
       const response = await axios.post(`${import.meta.env.VITE_POST_APPOINTMENT}`, newAppointment);
       fetchAppointments();
       handleCloseCreateModal();
       setShowModal(false);
     } catch (error) {
-
     }
 
   };
@@ -173,7 +210,8 @@ const AppointmentPage = ({ handleLinkClick }) => {
       alert('Please fill in all fields');
       return;
     }
-    const formattedDate = selectedDate.toISOString().split('T')[0];
+    const formattedDate = formatLocalDate(selectedDate);
+    console.log(formattedDate);
     const updatedAppointment = {
       ...currentAppointment,
       studentName,
@@ -205,37 +243,18 @@ const AppointmentPage = ({ handleLinkClick }) => {
     setCurrentAppointment(appointment);
     setStudentName(appointment.full_name);
     setComplaint(appointment.complaint);
-    setSelectedDate(new Date(appointment.date));
+    const date = new Date(appointment.date);
+    setSelectedDate(date);
     setSelectedTime(appointment.time);
+    fetchAvailableTimes(formatLocalDate(date));
     setShowRescheduleModal(true);
   };
-
-  const calculateAvailableTimes = (date, appointmentToExclude = null) => {
-    const formattedDate = date.toISOString().split('T')[0];
-
-    // Filter out the current appointment's time from available times when rescheduling
-    const takenTimes = appointments
-      .filter(app => formatDateLocal(app.date) === formattedDate && app.id !== (appointmentToExclude ? appointmentToExclude.id : null))
-      .map(app => app.time);
-
-    return timeSlots.filter(slot => !takenTimes.includes(slot));
-  };
-
-  useEffect(() => {
-    if (selectedDate) {
-      setAvailableTimes(calculateAvailableTimes(selectedDate, currentAppointment));  // Pass currentAppointment to exclude its time
-      if (!currentAppointment) {
-        setSelectedTime('');
-      } else {
-        setSelectedTime(currentAppointment.time);  // Ensure the selected time is set correctly
-      }
-    }
-  }, [selectedDate, appointments, currentAppointment]);
-
+  
   const handleConsultation = (patient) => {
     handleLinkClick('Consultations');
     navigate('/consultation', { state: { patient } });
   };
+
   const filteredAppointments = useMemo(() => {
     return appointments.filter(appointment => {
       const query = searchQuery.toLowerCase();
@@ -254,14 +273,14 @@ const AppointmentPage = ({ handleLinkClick }) => {
     setConfirmAction('cancel');
     setShowConfirmModal(true);
   };
-  
+
   const handleConsultationClick = (appointment) => {
     setSelectedAppointment(appointment);
     setConfirmMessage('Proceed to consultation?');
     setConfirmAction('consultation');
     setShowConfirmModal(true);
   };
-  
+
 
   const handleConfirm = async () => {
     if (confirmAction === 'cancel') {
@@ -276,7 +295,7 @@ const AppointmentPage = ({ handleLinkClick }) => {
       try {
         // Mark appointment (if needed, otherwise just navigate)
         await axios.put(`${import.meta.env.VITE_MARK_APPOINTMENT}/${selectedAppointment.id}`);
-        navigate('/consultation', { state: { patient: selectedAppointment  } });
+        navigate('/consultation', { state: { patient: selectedAppointment } });
       } catch (error) {
         console.error('Error proceeding to consultation:', error);
         alert('Failed to proceed. Please try again.');
@@ -287,12 +306,14 @@ const AppointmentPage = ({ handleLinkClick }) => {
     setConfirmAction(null);
   };
 
-  const handleCLoseModal = () => {
+  const handleCloseModal = () => {
     setShowRescheduleModal(false);
+    setFormData({ student_id: '' });
     setStudentName('');
     setComplaint('');
     setSelectedDate(null);
     setSelectedTime('');
+    setSuggestedStudents([]);
   };
   const handleCloseCreateModal = () => {
     setShowModal(false);
@@ -302,6 +323,7 @@ const AppointmentPage = ({ handleLinkClick }) => {
     setSelectedDate(null);
     setSelectedTime('');
     setSuggestedStudents([]);
+    // setAvailableDates([]);
   };
 
 
@@ -318,6 +340,7 @@ const AppointmentPage = ({ handleLinkClick }) => {
   return (
     <Container fluid>
       {/* Card for Appointment Table */}
+      <AppoinmentCalendar />
       <Card className=" shadow-sm">
         <Card.Header className='d-flex justify-content-between'>
           <strong>Appointments List</strong>
@@ -341,7 +364,7 @@ const AppointmentPage = ({ handleLinkClick }) => {
                 <th>Student Name</th>
                 <th>Date</th>
                 <th>Time</th>
-                <th>Complaint</th>
+                <th>Chief Complaint</th>
                 <th className='text-center'>Actions</th>
               </tr>
             </thead>
@@ -355,11 +378,8 @@ const AppointmentPage = ({ handleLinkClick }) => {
                   <td>{app.complaint}</td>
                   <td className='text-center'>
                     <Button variant='primary' size='sm' className='me-2' onClick={() => handleReschedule(app)}>Reschedule</Button>
-                    {/* <Button variant='success' size='sm' className='me-2' onClick={() => handleConsultation(app)}>Consultation</Button>
-                    <Button variant='danger' size='sm' onClick={() => handleCancel(app.id)}>Cancel</Button> */}
                     <Button variant='success' size='sm' className='me-2' onClick={() => handleConsultationClick(app)}>Consultation</Button>
                     <Button variant='danger' size='sm' onClick={() => handleCancelClick(app)}>Cancel</Button>
-
                   </td>
                 </tr>
               ))}
@@ -412,216 +432,54 @@ const AppointmentPage = ({ handleLinkClick }) => {
 
 
 
-      <Modal
+      <AppointmentFormModal
         show={showModal}
         onHide={handleCloseCreateModal}
-        centered
-        backdrop="static"
-        keyboard={false}
-      >
-        <Modal.Header closeButton>
-          <Modal.Title>Create Appointment</Modal.Title>
-        </Modal.Header>
+        title="Create Appointment"
+        formData={formData}
+        studentName={studentName}
+        complaint={complaint}
+        selectedDate={selectedDate}
+        selectedTime={selectedTime}
+        availableDates={availableDates}
+        availableTimes={availableTimes}
+        suggestedStudents={suggestedStudents}
+        students={students}
+        setStudentName={setStudentName}
+        setFormData={setFormData}
+        setComplaint={setComplaint}
+        setSelectedDate={setSelectedDate}
+        setSelectedTime={setSelectedTime}
+        handleChange={handleChange}
+        handleDateChange={handleDateChange}
+        onSubmit={handleBookAppointment}
+        formatLocalDate={formatLocalDate}
+        setSuggestedStudents={setSuggestedStudents}
 
-        <Modal.Body>
-          <Form>
+      />
 
-            {/* Student ID Input with AutoComplete */}
-            <Form.Group>
-              <AutoCompleteInput
-                label="Student ID"
-                name="student_id"
-                value={formData.student_id}
-                onChange={handleChange}
-                options={students}
-                getOptionLabel={(student) => student.student_id}
-                onBlur={() => {
-                  const studentExists = students.find(
-                    (student) => student.student_id === formData.student_id
-                  );
-                  if (!studentExists) {
-                    setFormData(prev => ({ ...prev, student_id: '' }));
-                    setStudentName('');
-                  }
-                }}
-                disabled={false}
-              />
-            </Form.Group>
+      <RescheduleModal 
+      show={showRescheduleModal}
+      onHide={() => handleCloseModal()}
+      studentName={studentName}
+      setStudentName={setStudentName}
+      complaint={complaint}
+      setComplaint={setComplaint}
+      selectedDate={selectedDate}
+      setSelectedDate={setSelectedDate}
+      selectedTime={selectedTime}
+      setSelectedTime={setSelectedTime}
+      setShowRescheduleModal={setShowRescheduleModal}
+      handleRescheduleAppointment={handleRescheduleAppointment}
+      availableDates={availableDates}
+      availableTimes={availableTimes}
+      formatLocalDate={formatDateLocal}
+      formatTime12Hour={formatTime12Hour}
+      handleDateChange={handleDateChange}
+      handleCancelClick={handleCancelClick}
+      />
 
-            {/* Student Name and Complaint Fields */}
-            <Row className="mb-3">
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Student Name</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={studentName}
-                    placeholder="Enter name"
-                    disabled
-                    onChange={(e) => setStudentName(e.target.value)}
-                  />
 
-                  {/* Suggested Students Dropdown */}
-                  {suggestedStudents.length > 0 && (
-                    <div className="autocomplete-dropdown">
-                      {suggestedStudents.map((student) => (
-                        <div
-                          key={student.id}
-                          className="autocomplete-item"
-                          onClick={() => {
-                            setStudentName(student.full_name);
-                            setFormData(prev => ({
-                              ...prev,
-                              student_id: student.student_id,
-                              user_id: student.user_id,
-                            }));
-                            setSuggestedStudents([]);
-                          }}
-                        >
-                          {student.full_name}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </Form.Group>
-              </Col>
-
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Complaint</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={complaint}
-                    placeholder="Enter complaint"
-                    onChange={(e) => setComplaint(e.target.value)}
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-
-            {/* Date and Time Selection */}
-            <Row className="mb-3">
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Select Date</Form.Label>
-                  <Form.Control
-                    type="date"
-                    value={selectedDate ? formatLocalDate(selectedDate) : ''}
-                    onChange={handleDateChange}
-                  />
-                </Form.Group>
-              </Col>
-
-              {selectedDate && (
-                <Col md={6}>
-                  <Form.Group>
-                    <Form.Label>Select Time</Form.Label>
-                    <Form.Select
-                      value={selectedTime}
-                      onChange={(e) => setSelectedTime(e.target.value)}
-                    >
-                      <option value="">Select a time</option>
-                      {availableTimes.map((time, index) => (
-                        <option key={index} value={time}>
-                          {formatTime12Hour(time)}
-                        </option>
-                      ))}
-                    </Form.Select>
-                  </Form.Group>
-                </Col>
-              )}
-            </Row>
-
-          </Form>
-        </Modal.Body>
-
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={handleBookAppointment}>
-            Book Appointment
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
-      {/* Modal for Rescheduling Appointment */}
-      <Modal show={showRescheduleModal} onHide={() => handleCLoseModal()} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Reschedule Appointment</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form>
-            <Row className="mb-3">
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Student Name</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={studentName}
-                    onChange={(e) => setStudentName(e.target.value)}
-                    placeholder="Enter name"
-                    disabled
-                  />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Complaint</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={complaint}
-                    onChange={(e) => setComplaint(e.target.value)}
-                    placeholder="Enter complaint"
-                    disabled
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Row className="mb-3">
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Select Date</Form.Label>
-                  <Form.Control
-                    type="date"
-                    // value={selectedDate ? selectedDate.toISOString().split('T')[0] : ''}
-                    value={selectedDate ? formatLocalDate(selectedDate) : ''}
-                    onChange={handleDateChange}
-                  />
-                </Form.Group>
-              </Col>
-
-              {selectedDate && (
-                <Col md={6}>
-                  <Form.Group>
-                    <Form.Label>Select Time</Form.Label>
-                    <Form.Select
-                      value={selectedTime}
-                      onChange={(e) => setSelectedTime(e.target.value)}
-                    >
-                      <option value="">{formatTime12Hour(selectedTime)}</option>
-                      {availableTimes.map((time, index) => (
-                        <option key={index} value={time}>
-                          {formatTime12Hour(time)}
-                        </option>
-                      ))}
-                    </Form.Select>
-                  </Form.Group>
-                </Col>
-              )}
-            </Row>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowRescheduleModal(false)}>
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={handleRescheduleAppointment}>
-            Reschedule Appointment
-          </Button>
-        </Modal.Footer>
-      </Modal>
     </Container>
   );
 };

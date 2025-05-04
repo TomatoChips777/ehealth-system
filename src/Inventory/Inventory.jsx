@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Container, Table, Form, Button, Row, Col, Card, Spinner, OverlayTrigger, Tooltip } from 'react-bootstrap';
 
 import TextTruncate from '../extra/TextTruncate';
-import AddInventoryModal from './components/AddInventoryModal';
-import EditInventoryModal from './components/EditInventoryModal';
+// import AddInventoryModal from './Medicines/components/AddMedicineModal';
+// import EditInventoryModal from './Medicines/components/EditInventoryModal';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import PaginationControls from '../extra/Paginations';
@@ -241,7 +241,7 @@ function InventoryScreen({ handleAskButton }) {
         />
       </Card>
 
-      <AddInventoryModal
+      {/* <AddInventoryModal
         show={showAddModal}
         onHide={() => setShowAddModal(false)}
         onSubmit={handleAddSubmit}
@@ -255,7 +255,7 @@ function InventoryScreen({ handleAskButton }) {
         onSave={handleEditSubmit}
         item={selectedItem || newItem}
         handleChange={handleEditChange}
-      />
+      /> */}
     </Container>
   );
 }

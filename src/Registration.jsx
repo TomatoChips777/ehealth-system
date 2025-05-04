@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 
 const RegistrationScreen = () => {
   const navigate = useNavigate();
+  const [fieldErrors, setFieldErrors] = useState({});
   const [newPatient, setNewPatient] = useState({
     student_id: '',
     full_name: '',
@@ -32,18 +33,31 @@ const RegistrationScreen = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setFieldErrors({});
     try {
       const payload = {
         ...newPatient,
         username: newPatient.email,
         name: newPatient.full_name,
       };
-      await axios.post(`${import.meta.env.VITE_ADD_PATIENT}`, payload);
-      alert('Registration successful!');
-      navigate('/login');
+      const response = await axios.post(`${import.meta.env.VITE_ADD_PATIENT}`, payload);
+      if (response.data.success) {
+        alert('Registration successful!');
+        navigate('/login');
+      } else if (response.data.errors) {
+        setFieldErrors(response.data.errors); // Set field-specific errors
+      } else {
+        setError(response.data.message || 'Failed to add patient.');
+      }
     } catch (err) {
       console.error(err);
-      setError('Registration failed. Please check your inputs.');
+      if (err.response?.data?.errors) {
+        setFieldErrors(err.response.data.errors);
+      } else if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else {
+        setError('Something went wrong.');
+      }
     } finally {
       setLoading(false);
     }
@@ -67,6 +81,11 @@ const RegistrationScreen = () => {
 
               <Form onSubmit={handleRegister}>
                 <Row>
+                {error && (
+                <Alert variant="danger" style={{ borderRadius: '10px' }}>
+                  {error}
+                </Alert>
+              )}
                   <Col md={6}>
                     <Form.Group controlId="student_id" className="mb-3">
                       <Form.Control
@@ -253,11 +272,7 @@ const RegistrationScreen = () => {
                 </Button>
               </Form>
 
-              {error && (
-                <Alert variant="danger" style={{ borderRadius: '10px' }}>
-                  {error}
-                </Alert>
-              )}
+              
 
               <div className="text-center mt-3">
                 <small>

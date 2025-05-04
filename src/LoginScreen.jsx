@@ -23,8 +23,13 @@ const LoginScreen = () => {
 
       signIn(response.data);
     } catch (error) {
-      setError('Check your email or password');
+      if (error.response && error.response.data && error.response.data.error) {
+        setError(error.response.data.error);
+      } else {
+        setError('An unexpected error occurred');
+      }
     }
+    
     finally{
       setLoading(false);
     }
@@ -96,21 +101,20 @@ const LoginScreen = () => {
                 width="100%"
                 style={{ marginBottom: '1rem' }}
               />
-
+     
               {/* OR Manual Login */}
               <div className="my-3 text-center">
                 <span>or</span>
               </div>
-
+              {/* Error Message */}
+              {error && (
+                <Alert variant="danger" style={{ borderRadius: '10px' }}>
+                  {error}
+                </Alert>
+              )}
               <Form onSubmit={handleManualLogin}>
                 <Form.Group controlId="email">
-                   {/* Error message for email */}
-                   {error && (
-                    <Form.Text className="text-danger">
-                      {error}
-                    </Form.Text>
-                  )}
-                  <Form.Control
+                  <Form.Control 
                     type="email"
                     placeholder="Enter your email"
                     value={email}
@@ -123,12 +127,7 @@ const LoginScreen = () => {
                 </Form.Group>
 
                 <Form.Group controlId="password">
-                   {/* Error message for password */}
-                   {error && (
-                    <Form.Text className="text-danger">
-                      {error}
-                    </Form.Text>
-                  )}
+  
                   <Form.Control
                     type="password"
                     placeholder="Enter your password"
@@ -162,12 +161,7 @@ const LoginScreen = () => {
                 </Button>
               </Form>
 
-              {/* Error Message */}
-              {error && (
-                <Alert variant="danger" style={{ borderRadius: '10px' }}>
-                  {error}
-                </Alert>
-              )}
+              
 
               <div className="text-center mt-3">
                 <small>

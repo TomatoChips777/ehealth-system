@@ -4,6 +4,9 @@ import FormatDate from '../../extra/DateFormat';
 import TextTruncate from '../../extra/TextTruncate';
 
 function StudentLogs({ logs = [] }) {
+  if (!logs || logs.length === 0) {
+    return <p className="mt-3 text-muted">No logs found for this student.</p>;
+  }
   const [currentPage, setCurrentPage] = useState(1);
   const logsPerPage = 2;
 

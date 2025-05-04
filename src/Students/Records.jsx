@@ -9,9 +9,9 @@ import StudentLogs from '../Patients/components/StudentLogs';
 import StudentPrescriptions from '../Patients/components/StudentPrescription';
 import { useAuth } from '../../AuthContext';
 import EditUserModal from '../extra/EditUserModal';
+import { io } from 'socket.io-client';
 function Records() {
-    const {user} = useAuth();
-
+  const { user } = useAuth();
   const [exam, setExam] = useState({});
   const [findings, setFindings] = useState([]);
   const [studentLogs, setStudentLogs] = useState([]);
@@ -19,9 +19,9 @@ function Records() {
   const [exams, setExams] = useState([]);
   const [selectedExamId, setSelectedExamId] = useState(null);
   const [viewMode, setViewMode] = useState('APE');
- const [patient, setPatient] = useState({});
- const [showEditModal, setShowEditModal] = useState(false);
- const [selectedPatient, setSelectedPatient] = useState(null);
+  const [patient, setPatient] = useState({});
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState(null);
   const bodyParts = [
     'Skin', 'Lungs', 'Nose', 'Heart', 'Mouth', 'Abdomen', 'Pharynx', 'Rectum',
     'Tonsils', 'Genitalia', 'Gums', 'Spine', 'Lymph nodes', 'Arms', 'Neck',
@@ -37,8 +37,7 @@ function Records() {
 
       ]);
       setPatient(userData.data[0] || {});
-      console.log(userData.data); // correct
-      
+
       const allExams = examRes.data.exam || [];
       setExams(allExams);
 
@@ -59,7 +58,23 @@ function Records() {
 
   useEffect(() => {
     fetchData();
+    const socket = io(`${import.meta.env.VITE_API_URL}`);
+    socket.on('updateAPE', (user_id) => {
+      if (user.id == user_id.user_id) {
+        fetchData();
+      }
+    });
+
+    socket.on('updateUser', () => {
+      console.log("Yes");
+        fetchData();
+    });
+
+    return () => {
+      socket.disconnect();
+    };
   }, [user?.id]);
+
 
   const handleEditClick = (patient) => {
     setSelectedPatient(patient);
@@ -76,9 +91,8 @@ function Records() {
     }
   };
   const handleSave = () => {
-    console.log('Saved!');
     fetchData();
-    
+
   };
   const safePatient = patient || [];
   const safeExam = exam || {};
@@ -91,10 +105,11 @@ function Records() {
           <div className="d-flex align-items-center gap-2">
             <PersonFill size={28} />
             <h5 className="mb-0">{safePatient.full_name}</h5>
+            <Button variant="warning" size="sm" className="me-2" onClick={() => handleEditClick(patient)}>
+              <i className="bi bi-pencil"></i>
+            </Button>
           </div>
-          <Button variant="warning" size="sm" className="me-2" onClick={() => handleEditClick(patient)}>
-                      <i className="bi bi-pencil"></i>
-                    </Button>
+
           <ButtonGroup>
             <Button variant={viewMode === 'APE' ? 'success' : 'outline-success'} onClick={() => setViewMode('APE')}>APE</Button>
             <Button variant={viewMode === 'Logs' ? 'success' : 'outline-success'} onClick={() => setViewMode('Logs')}>Logs</Button>
@@ -105,144 +120,138 @@ function Records() {
         <Card.Body>
           {/* Basic Student Info */}
           <Row className="mb-3">
-            <Col md={3} className="text-center">
-              <Image
-                src={safePatient.profile_pic}
-                roundedCircle
-                fluid
-                style={{ maxHeight: '100px' }}
-                className="mb-2"
-              />
-              <p className="fw-bold mb-0">{safePatient.full_name || safePatient.name}</p>
-              <small className="text-muted">{safePatient.email}</small>
-            </Col>
-
-            <Col md={9}>
-              <Row>
-                <Col md={6}>
-                  <ListGroup variant="flush">
+            {/* Left Column: Patient Basic Info */}
+            <Col md={4}>
+              <Card className="mb-3 shadow-sm">
+                <Card.Body className="text-center">
+                  <Image
+                    src={safePatient.profile_pic}
+                    roundedCircle
+                    fluid
+                    style={{ maxHeight: '100px' }}
+                    className="mb-2"
+                  />
+                  <h6 className="fw-bold">{safePatient.full_name || safePatient.name}</h6>
+                  <p className="text-muted small mb-1">{safePatient.email}</p>
+                  <ListGroup variant="flush" className="text-start mt-3">
                     <ListGroup.Item><strong>Student ID:</strong> {safePatient.student_id}</ListGroup.Item>
                     <ListGroup.Item><strong>Age:</strong> {CalculateAge(safePatient.birthdate)}</ListGroup.Item>
                     <ListGroup.Item><strong>Sex:</strong> {safePatient.sex}</ListGroup.Item>
                     <ListGroup.Item><strong>Course & Year:</strong> {safePatient.course} - {safePatient.year}</ListGroup.Item>
-                  </ListGroup>
-                </Col>
-                <Col md={6}>
-                  <ListGroup variant="flush">
                     <ListGroup.Item><strong>Address:</strong> {safePatient.address}</ListGroup.Item>
-                    <ListGroup.Item><strong>Contact No.:</strong> {safePatient.contact_number}</ListGroup.Item>
+                    <ListGroup.Item><strong>Contact #:</strong> {safePatient.contact_number}</ListGroup.Item>
                     <ListGroup.Item><strong>Contact Person:</strong> {safePatient.contact_person}</ListGroup.Item>
-                    <ListGroup.Item><strong>Contact Person No.:</strong> {safePatient.contact_person_number}</ListGroup.Item>
+                    <ListGroup.Item><strong>Contact Person #:</strong> {safePatient.contact_person_number}</ListGroup.Item>
                   </ListGroup>
-                </Col>
-              </Row>
-            </Col>
-          </Row>
-
-          {/* View Modes */}
-          {viewMode === 'APE' && (
-            <>
-              <Card className="mb-4">
-                <Card.Header className="d-flex justify-content-between align-items-center">
-                  <h6 className="mb-0">Annual Physical Exam</h6>
-                  <div className="d-flex align-items-center gap-2">
-                    <select
-                      className="form-select form-select-sm w-auto"
-                      value={selectedExamId || ''}
-                      onChange={handleExamChange}
-                    >
-                      {exams.map((e) => (
-                        <option key={e.id} value={e.id}>
-                          {FormatDate(e.date_examined, false)} - {e.physician || 'Physician'}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </Card.Header>
-                <Card.Body>
-                  <h6 className="text-muted mb-3">Vital Signs</h6>
-                  <Row>
-                    <Col md={6}>
-                      <ListGroup variant="flush">
-                        <ListGroup.Item><strong>BP:</strong> {safeExam.bp}</ListGroup.Item>
-                        <ListGroup.Item><strong>HR:</strong> {safeExam.heart_rate}</ListGroup.Item>
-                        <ListGroup.Item><strong>RR:</strong> {safeExam.rr}</ListGroup.Item>
-                        <ListGroup.Item><strong>Temp:</strong> {safeExam.temp}</ListGroup.Item>
-                      </ListGroup>
-                    </Col>
-                    <Col md={6}>
-                      <ListGroup variant="flush">
-                        <ListGroup.Item><strong>Height:</strong> {safeExam.height}</ListGroup.Item>
-                        <ListGroup.Item><strong>Weight:</strong> {safeExam.weight}</ListGroup.Item>
-                        <ListGroup.Item><strong>BMI:</strong> {safeExam.bmi}</ListGroup.Item>
-                      </ListGroup>
-                    </Col>
-                  </Row>
-
-                  <hr />
-
-                  {/* Vision and Others */}
-                  <h6 className="text-muted mb-3">Other Health Information</h6>
-                  <Table bordered size="sm" responsive>
-                    <tbody>
-                      <tr><th>Vision OD</th><td>{safeExam.vision_od}</td></tr>
-                      <tr><th>Vision OS</th><td>{safeExam.vision_os}</td></tr>
-                      <tr><th>Hearing (Right)</th><td>{safeExam.hearing_right}</td></tr>
-                      <tr><th>Hearing (Left)</th><td>{safeExam.hearing_left}</td></tr>
-                      <tr><th>Asthma History</th><td>{safeExam.asthma}</td></tr>
-                      <tr><th>Allergies</th><td>{safeExam.allergies}</td></tr>
-                      <tr><th>Medical Condition</th><td>{safeExam.medical_condition}</td></tr>
-                    </tbody>
-                  </Table>
-
-                  <hr />
-
-                  {/* Findings */}
-                  <h6 className="text-muted mb-3">Body Parts Findings</h6>
-                  <Table bordered size="sm" responsive>
-                    <thead>
-                      <tr>
-                        <th>Body Part</th>
-                        <th>Status</th>
-                        <th>Notes</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {bodyParts.map((part, idx) => {
-                        const finding = safeFindings.find(f => f.body_part === part);
-                        const status = finding ? finding.status : 'NA';
-                        const notes = finding ? finding.notes : '-';
-                        return (
-                          <tr key={idx}>
-                            <td>{part}</td>
-                            <td className="text-center">
-                              <Badge bg={status === 'A' ? 'danger' : status === 'N' ? 'success' : 'secondary'}>
-                                {status}
-                              </Badge>
-                            </td>
-                            <td>{notes}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </Table>
                 </Card.Body>
               </Card>
-            </>
-          )}
+            </Col>
 
-          {viewMode === 'Logs' && (
-            <>
-              <h5 className="mb-3">Student Logs</h5>
-              <StudentLogs logs={studentLogs} />
-            </>
-          )}
+            <Col md={8}>
+              {/* View Modes */}
+              {viewMode === 'APE' && (
+                <>
+                  <Card className="mb-4">
+                    <Card.Header className="d-flex justify-content-between align-items-center">
+                      <h6 className="mb-0">Annual Physical Exam</h6>
+                      <div className="d-flex align-items-center gap-2">
+                        <select
+                          className="form-select form-select-sm w-auto"
+                          value={selectedExamId || ''}
+                          onChange={handleExamChange}
+                        >
+                          {exams.map((e) => (
+                            <option key={e.id} value={e.id}>
+                              {FormatDate(e.date_examined, false)} - {e.physician || 'Physician'}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </Card.Header>
+                    <Card.Body>
+                      <h6 className="text-muted mb-3">Vital Signs</h6>
+                      <Row>
+                        <Col md={6}>
+                          <ListGroup variant="flush">
+                            <ListGroup.Item><strong>BP:</strong> {safeExam.bp}</ListGroup.Item>
+                            <ListGroup.Item><strong>HR:</strong> {safeExam.heart_rate}</ListGroup.Item>
+                            <ListGroup.Item><strong>RR:</strong> {safeExam.rr}</ListGroup.Item>
+                            <ListGroup.Item><strong>Temp:</strong> {safeExam.temp}</ListGroup.Item>
+                          </ListGroup>
+                        </Col>
+                        <Col md={6}>
+                          <ListGroup variant="flush">
+                            <ListGroup.Item><strong>Height:</strong> {safeExam.height}</ListGroup.Item>
+                            <ListGroup.Item><strong>Weight:</strong> {safeExam.weight}</ListGroup.Item>
+                            <ListGroup.Item><strong>BMI:</strong> {safeExam.bmi}</ListGroup.Item>
+                          </ListGroup>
+                        </Col>
+                      </Row>
+                      <hr />
+                      {/* Vision and Others */}
+                      <h6 className="text-muted mb-3">Other Health Information</h6>
+                      <Table bordered size="sm" responsive>
+                        <tbody>
+                          <tr><th>Vision OD</th><td>{safeExam.vision_od}</td></tr>
+                          <tr><th>Vision OS</th><td>{safeExam.vision_os}</td></tr>
+                          <tr><th>Hearing (Right)</th><td>{safeExam.hearing_right}</td></tr>
+                          <tr><th>Hearing (Left)</th><td>{safeExam.hearing_left}</td></tr>
+                          <tr><th>Asthma History</th><td>{safeExam.asthma}</td></tr>
+                          <tr><th>Allergies</th><td>{safeExam.allergies}</td></tr>
+                          <tr><th>Medical Condition</th><td>{safeExam.medical_condition}</td></tr>
+                        </tbody>
+                      </Table>
 
-          {viewMode === 'Prescriptions' && (
-            <>
-              <StudentPrescriptions prescriptions={studentPrescriptions} />
-            </>
-          )}
+                      <hr />
+
+                      {/* Findings */}
+                      <h6 className="text-muted mb-3">Body Parts Findings</h6>
+                      <Table bordered size="sm" responsive>
+                        <thead>
+                          <tr>
+                            <th>Body Part</th>
+                            <th>Status</th>
+                            <th>Notes</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {bodyParts.map((part, idx) => {
+                            const finding = safeFindings.find(f => f.body_part === part);
+                            const status = finding ? finding.status : 'NA';
+                            const notes = finding ? finding.notes : '-';
+                            return (
+                              <tr key={idx}>
+                                <td>{part}</td>
+                                <td className="text-center">
+                                  <Badge bg={status === 'A' ? 'danger' : status === 'N' ? 'success' : 'secondary'}>
+                                    {status}
+                                  </Badge>
+                                </td>
+                                <td>{notes}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </Table>
+                    </Card.Body>
+                  </Card>
+                </>
+              )}
+
+              {viewMode === 'Logs' && (
+                <>
+                  <h5 className="mb-3">Student Logs</h5>
+                  <StudentLogs logs={studentLogs} />
+                </>
+              )}
+
+              {viewMode === 'Prescriptions' && (
+                <>
+                  <StudentPrescriptions prescriptions={studentPrescriptions} />
+                </>
+              )}
+            </Col>
+          </Row>
         </Card.Body>
       </Card>
       <EditUserModal

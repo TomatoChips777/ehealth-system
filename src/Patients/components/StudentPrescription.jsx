@@ -49,14 +49,14 @@ function StudentPrescriptions({ prescriptions, student }) {
           <tbody>
             {currentPrescriptions.map((pres, idx) => (
               <tr key={idx}>
-                <td className="text-center fw-bold">{FormatDate(pres.created_at, false)}</td>
+                <td className="fw-bold">{FormatDate(pres.created_at, false)}</td>
                 <td>
                   {pres.prescriptions.map((med, medIdx) => (
                     <div key={medIdx} className="mb-1 fw-bold">
                       {med.medicine}
-                      <small className="text-muted">
+                      {/* <small className="text-muted">
                         ({med.dosage} / {med.frequency}xday / {med.duration} days)
-                      </small>
+                      </small> */}
                     </div>
                   ))}
                 </td>

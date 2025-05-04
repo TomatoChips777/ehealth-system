@@ -12,6 +12,10 @@ import {
   Prescription2,
   BoxSeam
 } from 'react-bootstrap-icons';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend
+} from 'recharts';
+import AppoinmentCalendar from '../Appointment/Calendar';
 
 
 const Dashboard = () => {
@@ -23,6 +27,10 @@ const Dashboard = () => {
   const [medicineMonthly, setMedicineMonthly] = useState([]);
 
   const [supplyMonthly, setSupplyMonthly] = useState([]);
+  const [consultationData, setConsultationData] = useState([]);
+  const [trendType, setTrendType] = useState("daily");
+  const [appointmentData, setAppointmentData] = useState([]);
+  const [medicineExtremes, setMedicineExtremes] = useState({ highest: [], lowest: [] });
 
   useEffect(() => {
     fetchCounts();
@@ -32,7 +40,69 @@ const Dashboard = () => {
     fetchEquipmentMonthly();
     fetchMedicineMonthly();
     fetchSupplytMonthly();
+    fetchDailyTrends();
+    fetchAppointmentFrequency();
+    fetchMedicineExtremes();
   }, []);
+
+
+
+  const fetchMedicineExtremes = async () => {
+    try {
+      const res = await axios.get('http://localhost:3030/api/dashboard/analytics/medicine-quantity-extremes');
+      setMedicineExtremes(res.data);
+    } catch (error) {
+      console.error('Error fetching medicine extremes:', error);
+    }
+  };
+
+  const chartData = medicineExtremes.highest.map(high => {
+    const low = medicineExtremes.lowest.find(l => l.medicine_name === high.medicine_name) || {};
+    return {
+      name: high.medicine_name,
+      highestQuantity: high.quantity,
+      lowestQuantity: low.quantity || 0
+    };
+  });
+
+  // const chartData = [
+  //   ...medicineExtremes.highest.map(item => ({
+  //     name: item.medicine_name,
+  //     quantity: item.quantity,
+  //     type: 'Highest'
+  //   })),
+  //   ...medicineExtremes.lowest.map(item => ({
+  //     name: item.medicine_name,
+  //     quantity: item.quantity,
+  //     type: 'Lowest'
+  //   }))
+  // ];
+
+  const fetchAppointmentFrequency = async () => {
+    try {
+      const res = await axios.get('http://localhost:3030/api/dashboard/analytics/appointment-frequency');
+      setAppointmentData(res.data);
+    } catch (error) {
+      console.error('Error fetching appointment frequency:', error);
+    }
+  };
+
+  const fetchDailyTrends = async () => {
+    try {
+      const res = await axios.get('http://localhost:3030/api/dashboard/analytics/trends-daily'); // Ensure this endpoint is correct
+
+      const formatted = res.data.map(entry => {
+        return {
+          label: entry.label,
+          total: entry.total
+        };
+      });
+
+      setConsultationData(formatted);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const fetchCounts = async () => {
     try {
@@ -98,19 +168,15 @@ const Dashboard = () => {
   return (
     <Container fluid>
       {/* Quick Stats */}
-      <Card className="mb-4">
-        <Card.Header className="bg-primary text-white">Quick Stats</Card.Header>
+      <Card className="mb-2">
+        <Card.Header className="">Quick Stats</Card.Header>
         <Card.Body>
           <Row className="g-3">
             {[
-              { label: "Annual Exams", count: counts.annual_physical_exams, color: "primary", icon: <PersonBadgeFill size={32} /> },
               { label: "Appointments (Pending)", count: counts.appointments, color: "danger", icon: <CalendarCheckFill size={32} /> },
               { label: "Equipment Items", count: counts.equipment_inventory, color: "success", icon: <ClipboardDataFill size={32} /> },
               { label: "Medicines Items", count: counts.medicine_inventory, color: "info", icon: <CapsulePill size={32} /> },
               { label: "Supply Items", count: counts.supply_inventory, color: "secondary", icon: <BoxSeam size={32} /> }, // <-- Supply card
-              { label: "Notifications", count: counts.notifications, color: "warning", icon: <BellFill size={32} /> },
-              { label: "Findings", count: counts.physical_exam_findings, color: "dark", icon: <FileEarmarkMedicalFill size={32} /> },
-              { label: "Prescriptions", count: counts.prescriptions, color: "light", icon: <Prescription2 size={32} /> },
             ]
               .map((stat, idx) => (
                 <Col md={3} key={idx}>
@@ -126,69 +192,96 @@ const Dashboard = () => {
           </Row>
         </Card.Body>
       </Card>
-
-      {/* Appointments Status */}
-      <Card className="mb-4">
-        <Card.Header className="bg-primary text-white">Appointments Status</Card.Header>
-        <Card.Body>
-          {appointments.length > 0 ? (
-            <ListGroup>
-              {appointments.map((item, index) => (
-                <ListGroup.Item key={index} className="d-flex justify-content-between align-items-center">
-                  {item.status}
-                  <Badge bg="primary" pill>{item.count}</Badge>
-                </ListGroup.Item>
-              ))}
-            </ListGroup>
-          ) : (
-            <p>No appointment data available.</p>
-          )}
-        </Card.Body>
-      </Card>
+      <AppoinmentCalendar/>
       <Row>
-        <Col md={6}>
-          {/* Top Prescribed Medicines */}
-          <Card className="mb-4">
-            <Card.Header className="bg-primary text-white">Top Prescribed Medicines</Card.Header>
+        <Col>
+          <Card className="mb-3">
             <Card.Body>
-              {topMedicines.length > 0 ? (
-                <ListGroup>
-                  {topMedicines.map((med, index) => (
-                    <ListGroup.Item key={index} className="d-flex justify-content-between align-items-center">
-                      {med.medicine_name}
-                      <Badge bg="success" pill>{med.count}</Badge>
-                    </ListGroup.Item>
-                  ))}
-                </ListGroup>
-              ) : (
-                <p>No medicine data available.</p>
-              )}
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <Card.Title>Consultation Trends This Week</Card.Title>
+              </div>
+
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={consultationData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="label"
+                    tickFormatter={(value) => value} // This will just use the formatted label as it is
+                  />
+                  <YAxis />
+                  <Tooltip />
+                  <Line
+                    type="monotone"
+                    dataKey="total"
+                    stroke="#dc3545"
+                    strokeWidth={2}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </Card.Body>
+
+          </Card>
+
+        </Col>
+      </Row>
+
+      
+
+      <Row>
+        <Col>
+          <Card className="mb-3">
+            <Card.Body>
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <Card.Title>Appointment Frequency</Card.Title>
+              </div>
+
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={appointmentData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="label" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="pending" stroke="#ffc107" strokeWidth={2} name="Pending" />
+                  <Line type="monotone" dataKey="completed" stroke="#28a745" strokeWidth={2} name="Completed" />
+                  <Line type="monotone" dataKey="canceled" stroke="#dc3545" strokeWidth={2} name="Canceled" />
+                  <Line type="monotone" dataKey="rescheduled" stroke="#17a2b8" strokeWidth={2} name="Rescheduled" />
+                </LineChart>
+              </ResponsiveContainer>
+
             </Card.Body>
           </Card>
         </Col>
-
-        <Col md={6}>
-          {/* Findings Status */}
-          <Card className="mb-4">
-            <Card.Header className="bg-primary text-white">Physical Exam Findings</Card.Header>
-            <Card.Body>
-              {findingsStatus.length > 0 ? (
-                <ListGroup>
-                  {findingsStatus.map((finding, index) => (
-                    <ListGroup.Item key={index} className="d-flex justify-content-between align-items-center">
-                      {finding.status}
-                      <Badge bg="warning" pill>{finding.count}</Badge>
-                    </ListGroup.Item>
-                  ))}
-                </ListGroup>
-              ) : (
-                <p>No findings data available.</p>
-              )}
-            </Card.Body>
-          </Card></Col>
       </Row>
 
+      <Row>
+        <Col>
+          <Card className="mb-3">
+            <Card.Body>
+              <div className="d-flex justify-content-between align-items-center mb-2">
+              <Card.Title>Highest and Lowest Medicine Quantities</Card.Title>
+              </div>
 
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="highestQuantity" fill="#007bff" name="Highest" />
+                  <Bar dataKey="lowestQuantity" fill="#dc3545" name="Lowest" />
+                </BarChart>
+              </ResponsiveContainer>
+
+
+            </Card.Body>
+
+          </Card>
+
+        </Col>
+      </Row>
+  
 
       {/* Equipment Inventory */}
       <Card className="mb-4">
@@ -200,7 +293,7 @@ const Dashboard = () => {
                 <thead>
                   <tr>
                     <th>Name</th>
-                    {["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].map((month, idx) => (
+                    {["Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"].map((month, idx) => (
                       <th key={idx}>{month}</th>
                     ))}
                   </tr>
@@ -208,10 +301,10 @@ const Dashboard = () => {
                 <tbody>
                   {equipmentMonthly.map((item, idx) => (
                     <tr key={idx}>
-                      <td>{item.name}</td>
+                      <td>{item.equipment_name}</td>
                       {[
-                        item.january, item.february, item.march, item.april, item.may, item.june,
-                        item.july, item.august, item.september, item.october, item.november, item.december
+                        item.Aug, item.Sep, item.Oct, item.Nov, item.Dec, item.Jan,
+                        item.Feb, item.Mar, item.Apr, item.May, item.Jun, item.Jul
                       ].map((val, idx2) => (
                         <td key={idx2}>{val}</td>
                       ))}
@@ -236,7 +329,7 @@ const Dashboard = () => {
                 <thead>
                   <tr>
                     <th>Name</th>
-                    {["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].map((month, idx) => (
+                    {["Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"].map((month, idx) => (
                       <th key={idx}>{month}</th>
                     ))}
                   </tr>
@@ -244,10 +337,10 @@ const Dashboard = () => {
                 <tbody>
                   {medicineMonthly.map((item, idx) => (
                     <tr key={idx}>
-                      <td>{item.name}</td>
+                      <td>{item.medicine_name}</td>
                       {[
-                        item.january, item.february, item.march, item.april, item.may, item.june,
-                        item.july, item.august, item.september, item.october, item.november, item.december
+                        item.Aug, item.Sep, item.Oct, item.Nov, item.Dec, item.Jan,
+                        item.Feb, item.Mar, item.Apr, item.May, item.Jun, item.Jul
                       ].map((val, idx2) => (
                         <td key={idx2}>{val}</td>
                       ))}
@@ -272,7 +365,8 @@ const Dashboard = () => {
                 <thead>
                   <tr>
                     <th>Name</th>
-                    {["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].map((month, idx) => (
+                    {["Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"].map((month, idx) => (
+
                       <th key={idx}>{month}</th>
                     ))}
                   </tr>
@@ -280,10 +374,10 @@ const Dashboard = () => {
                 <tbody>
                   {supplyMonthly.map((item, idx) => (
                     <tr key={idx}>
-                      <td>{item.name}</td>
+                      <td>{item.supply_name}</td>
                       {[
-                        item.january, item.february, item.march, item.april, item.may, item.june,
-                        item.july, item.august, item.september, item.october, item.november, item.december
+                        item.Aug, item.Sep, item.Oct, item.Nov, item.Dec, item.Jan,
+                        item.Feb, item.Mar, item.Apr, item.May, item.Jun, item.Jul
                       ].map((val, idx2) => (
                         <td key={idx2}>{val}</td>
                       ))}

@@ -6,7 +6,9 @@ import FormatDate from '../extra/DateFormat';
 import EditUserModal from '../extra/EditUserModal';
 import AddUserModal from '../extra/AddUserModal';
 import { io } from 'socket.io-client';
+import { useAuth } from '../../AuthContext';
 function Users() {
+  const {user} = useAuth();
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
@@ -41,7 +43,7 @@ function Users() {
     fetchUsers();
     const socket = io(`${import.meta.env.VITE_API_URL}`);
     socket.on('updateUser', () => {
-      fetchData();
+      fetchUsers();
     });
     return () => {
       socket.disconnect();
@@ -130,6 +132,10 @@ function Users() {
   };
 
   const toggleUserStatus = async (userId, currentStatus) => {
+
+    if(user.id === userId){
+      return;
+    }
     const newStatus = currentStatus === 1 ? 0 : 1;
     try {
       const response = await axios.put(`${import.meta.env.VITE_ACTIVATE_DEACTIVATE_USER}/${userId}`, {
@@ -137,7 +143,7 @@ function Users() {
       });
       if (response.data.success) {
         setUsers(users.map(user =>
-          user.id === userId ? { ...user, status: newStatus } : user
+          user.user_id === userId ? { ...user, status: newStatus } : user
         ));
       }
     } catch (err) {
@@ -162,10 +168,10 @@ function Users() {
           <Col md={3}>
             <Form.Select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
               <option value="All">All Roles</option>
-              <option value="admin">Admin</option>
-              <option value="physician">Physician</option>
-              <option value="student">Student</option>
-              <option value="staff">Staff</option>
+              <option value="Admin">Admin</option>
+              <option value="Physician">Physician</option>
+              <option value="Student">Student</option>
+              <option value="Staff">Staff</option>
             </Form.Select>
           </Col>
           <Col md={3} className="d-flex justify-content-end align-items-center">
@@ -205,7 +211,7 @@ function Users() {
                     <Form.Check
                       type="checkbox"
                       checked={user.status === 1}
-                      onChange={() => toggleUserStatus(user.id, user.status)}
+                      onChange={() => toggleUserStatus(user.user_id, user.status)}
                     />
                   </td>
                   <td>{FormatDate(user.created_at)}</td>

@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }) => {
     initializeAuth();
 
     const socket = io(`${import.meta.env.VITE_API_URL}`);
-    socket.on('updateUser', () => {
+    socket.on('changeUserRole', () => {
       initializeAuth();
     });
 

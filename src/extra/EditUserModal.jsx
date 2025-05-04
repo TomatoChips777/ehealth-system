@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Modal, Button, Form, Spinner, Alert, Row, Col } from 'react-bootstrap';
 import axios from 'axios';
-
+import { useAuth } from '../../AuthContext';
 const EditUserModal = ({ show, handleClose, initialData, onSave }) => {
+  const { role } = useAuth();
+  const [fieldErrors, setFieldErrors] = useState({});
   const [formData, setFormData] = useState({
     id: '',
     username: '',
@@ -18,7 +20,12 @@ const EditUserModal = ({ show, handleClose, initialData, onSave }) => {
     contact_person: '',
     contact_person_number: '',
     password: '',
+    newRole: '',
+    prevRole: '',
+    role: role,
   });
+  const isEditable = role === 'Admin' || role === 'Physician';
+
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -39,11 +46,13 @@ const EditUserModal = ({ show, handleClose, initialData, onSave }) => {
         address: initialData.address || '',
         contact_person: initialData.contact_person || '',
         contact_person_number: initialData.contact_person_number || '',
-        password: '', // always empty unless user types a new one
+        password: '',
+        newRole: initialData.role || '',
+        prevRole: initialData.role || '',
+        role: role,
       });
     }
   }, [initialData]);
-  
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -53,20 +62,28 @@ const EditUserModal = ({ show, handleClose, initialData, onSave }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setFieldErrors({});
     setError('');
-console.log(formData);
     try {
       const response = await axios.post(`${import.meta.env.VITE_EDIT_DETAILS}`, formData);
 
       if (response.data.success) {
-        onSave(); // callback after successful save
-        handleClose(); // close modal
+        onSave();
+        handleClose();
+      } else if (response.data.errors) {
+        setFieldErrors(response.data.errors); 
       } else {
-        setError(response.data.message || 'Update failed');
+        setError(response.data.message || 'Failed to add patient.');
       }
     } catch (err) {
       console.error(err);
-      setError('Something went wrong.');
+      if (err.response?.data?.errors) {
+        setFieldErrors(err.response.data.errors);
+      } else if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else {
+        setError('Something went wrong.');
+      }
     } finally {
       setLoading(false);
     }
@@ -110,8 +127,9 @@ console.log(formData);
                 />
               </Form.Group>
             </Col>
-
             {/* Student ID */}
+
+
             <Col md={6}>
               <Form.Group>
                 <Form.Label>Student ID</Form.Label>
@@ -121,9 +139,11 @@ console.log(formData);
                   value={formData.student_id}
                   onChange={handleChange}
                   required
+                  disabled={!isEditable}
                 />
               </Form.Group>
             </Col>
+
 
             {/* Full Name */}
             <Col md={6}>
@@ -196,6 +216,7 @@ console.log(formData);
                   <option value="">Select...</option>
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
+                  <option value="Others">Others</option>
                 </Form.Select>
               </Form.Group>
             </Col>
@@ -252,19 +273,38 @@ console.log(formData);
               </Form.Group>
             </Col>
 
-            {/* Password (optional) */}
-            <Col md={12}>
-              <Form.Group>
-                <Form.Label>New Password (optional)</Form.Label>
-                <Form.Control
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="Leave blank to keep current password"
-                />
-              </Form.Group>
-            </Col>
+            {role === 'Admin' &&
+              <>
+                {/* Password (optional) */}
+                <Col md={6}>
+                  <Form.Group>
+                    <Form.Label>New Password (optional)</Form.Label>
+                    <Form.Control
+                      type="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      placeholder="Leave blank to keep current password"
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group>
+                    <Form.Label>User Type</Form.Label>
+                    <Form.Select
+                      name="newRole"
+                      value={formData.newRole}
+                      onChange={handleChange}
+                    >
+                      <option value="Student">Student</option>
+                      <option value="Staff">Staff</option>
+                      <option value="Physician">Physician</option>
+                      <option value="Admin">Admin</option>
+                    </Form.Select>
+                  </Form.Group>
+                </Col>
+              </>
+            }
           </Row>
 
         </Modal.Body>

@@ -13,27 +13,41 @@ import {
 import { useNavigate } from 'react-router-dom';
 import FormatDate from '../extra/DateFormat';
 import { useAuth } from '../../AuthContext';
+import BookAppointmentModal from './components/BookAppointmentModal';
+import RescheduleAppointmentModal from './components/RescheduleAppointmentModal';
+import ConfirmModal from './components/ConfirmModal';
+import AppoinmentCalendar from './components/Calendar';
+import { io } from 'socket.io-client';
 const StudentAppointmentPage = () => {
-  const {user} = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
-
   const [appointments, setAppointments] = useState([]);
+  const [allAppointments, setAllAppointments] = useState([]);
+
   const [showModal, setShowModal] = useState(false);
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
-
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState('');
   const [complaint, setComplaint] = useState('');
   const [currentAppointment, setCurrentAppointment] = useState(null);
-
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [confirmMessage, setConfirmMessage] = useState('');
-
   const [currentPage, setCurrentPage] = useState(1);
   const appointmentsPerPage = 10;
 
+const formatDateLocal = (isoString) => {
+    const date = new Date(isoString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+ 
+    const [availableDates, setAvailableDates] = useState([]);
+    
   const timeSlots = [
     '08:30:00', '09:00:00', '09:30:00', '10:00:00', '10:30:00',
     '11:00:00', '11:30:00', '12:00:00', '12:30:00', '13:00:00',
@@ -49,10 +63,99 @@ const StudentAppointmentPage = () => {
       console.error('Error fetching appointments:', error);
     }
   };
+  const fetchAllAppointments = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_GET_APPOINTMENTS}`);
+      const pendingAppointments = response.data.filter(appointment => appointment.status === 'pending');
+     
+      setAllAppointments(pendingAppointments);
+    } catch (error) {
+      console.error('Error fetching appointments:', error);
+    }
+  };
+  const fetchAvailableDates = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_GET_AVAILABILITY}`);
+
+      const formattedDates = response.data.map(entry => formatDateLocal(entry.date));
+
+      setAvailableDates(formattedDates);
+
+    } catch (error) {
+      console.error('Error fetching available dates:', error);
+    }
+
+  };
+
+  const fetchAvailableTimes = async (date) => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_GET_AVAILABLE_TIMES}?date=${date}`);
+      
+      const availableSlots = response.data.availability
+        .filter(slot => slot.is_available === 1)
+        .map(slot => slot.time_slot);
+  
+      const bookedTimes = allAppointments
+        .filter(app => formatLocalDate(app.date) === date)
+        .map(app => app.time);
+  
+      const filteredSlots = availableSlots.filter(time => !bookedTimes.includes(time));
+  
+      setAvailableTimes(filteredSlots);
+    } catch (error) {
+      console.error('Error fetching available times:', error);
+      setAvailableTimes([]);
+    }
+  };
+ 
+    
+  // const fetchAvailableTimes = async (date) => {
+  //   try {
+  //     const response = await axios.get(`${import.meta.env.VITE_GET_AVAILABLE_TIMES}?date=${date}`);
+      
+  //     // Get all available slots from API
+  //     const availableSlots = response.data.availability
+  //       .filter(slot => slot.is_available === 1)
+  //       .map(slot => slot.time_slot);
+  
+  //     // Filter out time slots already booked on the selected date
+  //     const bookedTimes = allAppointments
+  //       .filter(app => formatLocalDate(app.date) === date)
+  //       .map(app => app.time);
+  
+  //     const filteredSlots = availableSlots.filter(time => !bookedTimes.includes(time));
+  
+  //     setAvailableTimes(filteredSlots);
+  //   } catch (error) {
+  //     console.error('Error fetching available times:', error);
+  //   }
+  // };
+  
 
   useEffect(() => {
     fetchAppointments();
+    fetchAvailableDates();
+    fetchAllAppointments();
+
+    const socket = io(`${import.meta.env.VITE_API_URL}`);
+    socket.on('updateNotifications', () => {
+      fetchAppointments();
+      fetchAvailableDates();
+      fetchAllAppointments();
+    });
+
+    return () => {
+      socket.disconnect();
+    };
   }, []);
+
+
+  const handleDateChange = (e) => {
+    const date = e.target.value;
+    const newDate = new Date(e.target.value);
+    setSelectedDate(newDate);
+    fetchAvailableTimes(date);
+  };
 
   const formatTime12Hour = (timeString) => {
     const [hour, minute] = timeString.split(':');
@@ -62,24 +165,19 @@ const StudentAppointmentPage = () => {
     return `${hour12.toString().padStart(2, '0')}:${minute} ${suffix}`;
   };
 
+  // const formatLocalDate = (date) => {
+  //   const localDate = new Date(date);
+  //   localDate.setMinutes(localDate.getMinutes() - localDate.getTimezoneOffset());
+  //   return localDate.toISOString().split('T')[0];
+  // };
+
+
   const formatLocalDate = (date) => {
-    const localDate = new Date(date);
-    localDate.setMinutes(localDate.getMinutes() - localDate.getTimezoneOffset());
-    return localDate.toISOString().split('T')[0];
-  };
-
-  const isWeekday = (date) => {
-    const day = new Date(date).getDay();
-    return day !== 0 && day !== 6;
-  };
-
-  const handleDateChange = (e) => {
-    const newDate = new Date(e.target.value);
-    if (isWeekday(newDate)) {
-      setSelectedDate(newDate);
-    } else {
-      alert('Please select a weekday.');
-    }
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const calculateAvailableTimes = (date, appointmentToExclude = null) => {
@@ -134,7 +232,7 @@ const StudentAppointmentPage = () => {
     try {
       await axios.put(`${import.meta.env.VITE_UPDATE_APPOINTMENT}/${currentAppointment.id}`, {
         ...currentAppointment,
-        date: selectedDate.toISOString().split('T')[0],
+        date: formatLocalDate(selectedDate),
         time: selectedTime,
       });
       fetchAppointments();
@@ -147,9 +245,12 @@ const StudentAppointmentPage = () => {
 
   const handleRescheduleClick = (appointment) => {
     setCurrentAppointment(appointment);
-    setSelectedDate(new Date(appointment.date));
+    const date = new Date(appointment.date);
+    setSelectedDate(date);
     setSelectedTime(appointment.time);
+    fetchAvailableTimes(formatLocalDate(date));
     setShowRescheduleModal(true);
+
   };
 
   const handleCancelClick = (appointment) => {
@@ -189,6 +290,7 @@ const StudentAppointmentPage = () => {
 
   return (
     <Container fluid>
+      <AppoinmentCalendar/>
       <Card className="shadow-sm">
         <Card.Header className="d-flex justify-content-between">
           <strong>My Appointments</strong>
@@ -202,7 +304,7 @@ const StudentAppointmentPage = () => {
               <tr>
                 <th>Date</th>
                 <th>Time</th>
-                <th>Complaint</th>
+                <th>Chief Complaint</th>
                 <th className="text-center">Actions</th>
               </tr>
             </thead>
@@ -251,130 +353,44 @@ const StudentAppointmentPage = () => {
         </Card.Footer>
       </Card>
 
-      {/* Create Appointment Modal */}
-      <Modal show={showModal} onHide={() => { setShowModal(false); resetForm(); }} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Book Appointment</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form>
-            <Form.Group className="mb-3">
-              <Form.Label>Complaint</Form.Label>
-              <Form.Control
-                type="text"
-                placeholder="Enter your complaint"
-                value={complaint}
-                onChange={(e) => setComplaint(e.target.value)}
-              />
-            </Form.Group>
-            <Row>
-              <Col>
-                <Form.Group className="mb-3">
-                  <Form.Label>Select Date</Form.Label>
-                  <Form.Control
-                    type="date"
-                    value={selectedDate ? formatLocalDate(selectedDate) : ''}
-                    onChange={handleDateChange}
-                  />
-                </Form.Group>
-              </Col>
-              <Col>
-                {selectedDate && (
-                  <Form.Group className="mb-3">
-                    <Form.Label>Select Time</Form.Label>
-                    <Form.Select
-                      value={selectedTime}
-                      onChange={(e) => setSelectedTime(e.target.value)}
-                    >
-                      <option value="">Select time</option>
-                      {availableTimes.map((time, idx) => (
-                        <option key={idx} value={time}>
-                          {formatTime12Hour(time)}
-                        </option>
-                      ))}
-                    </Form.Select>
-                  </Form.Group>
-                )}
-              </Col>
-            </Row>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => { setShowModal(false); resetForm(); }}>
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={handleBookAppointment}>
-            Book
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <BookAppointmentModal
+        show={showModal}
+        onHide={() => { setShowModal(false); resetForm(); }}
+        complaint={complaint}
+        setComplaint={setComplaint}
+        selectedDate={selectedDate}
+        setSelectedDate={setSelectedDate}
+        selectedTime={selectedTime}
+        setSelectedTime={setSelectedTime}
+        availableTimes={availableTimes}
+        formatTime12Hour={formatTime12Hour}
+        formatLocalDate={formatLocalDate}
+        handleDateChange={handleDateChange}
+        handleBookAppointment={handleBookAppointment}
+        availableDates={availableDates}
+      />
 
-      {/* Confirm Modal */}
-      <Modal show={showConfirmModal} onHide={() => setShowConfirmModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Confirm</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {confirmMessage}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowConfirmModal(false)}>
-            No
-          </Button>
-          <Button variant="primary" onClick={handleConfirm}>
-            Yes
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <RescheduleAppointmentModal
+        show={showRescheduleModal}
+        onHide={() => { setShowRescheduleModal(false); resetForm(); }}
+        selectedDate={selectedDate}
+        setSelectedDate={setSelectedDate}
+        selectedTime={selectedTime}
+        setSelectedTime={setSelectedTime}
+        availableTimes={availableTimes}
+        formatTime12Hour={formatTime12Hour}
+        formatLocalDate={formatLocalDate}
+        handleDateChange={handleDateChange}
+        handleRescheduleAppointment={handleRescheduleAppointment}
+        availableDates={availableDates}
+      />
 
-      {/* Reschedule Modal */}
-      <Modal show={showRescheduleModal} onHide={() => { setShowRescheduleModal(false); resetForm(); }} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Reschedule Appointment</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form>
-            <Row>
-              <Col>
-                <Form.Group className="mb-3">
-                  <Form.Label>Select New Date</Form.Label>
-                  <Form.Control
-                    type="date"
-                    value={selectedDate ? formatLocalDate(selectedDate) : ''}
-                    onChange={handleDateChange}
-                  />
-                </Form.Group>
-              </Col>
-              <Col>
-                {selectedDate && (
-                  <Form.Group className="mb-3">
-                    <Form.Label>Select New Time</Form.Label>
-                    <Form.Select
-                      value={selectedTime}
-                      onChange={(e) => setSelectedTime(e.target.value)}
-                    >
-                      <option value="">Select time</option>
-                      {availableTimes.map((time, idx) => (
-                        <option key={idx} value={time}>
-                          {formatTime12Hour(time)}
-                        </option>
-                      ))}
-                    </Form.Select>
-                  </Form.Group>
-                )}
-              </Col>
-            </Row>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => { setShowRescheduleModal(false); resetForm(); }}>
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={handleRescheduleAppointment}>
-            Save Changes
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <ConfirmModal
+        show={showConfirmModal}
+        onHide={() => setShowConfirmModal(false)}
+        onConfirm={handleConfirm}
+        message={confirmMessage}
+      />
     </Container>
   );
 };

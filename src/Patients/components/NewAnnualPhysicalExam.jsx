@@ -44,50 +44,6 @@ function NewAnnualPhysicalExam() {
     "Skin", "Lungs", "Nose", "Heart", "Mouth", "Abdomen", "Pharynx", "Rectum", "Tonsils",
     "Genitalia", "Gums", "Spine", "Lymph nodes", "Arms", "Neck", "Legs", "Chest", "Feet"
   ];
-  // Fetch existing annual physical exam data if available
-//   const fetchExamData = async () => {
-//     try {
-//       const response = await axios.get(`${import.meta.env.VITE_GET_ANNUAL_PHYSICAL_EXAM_BY_ID}/${patient?.id}`);
-//       const examData = response.data.exam;
-
-//       // Check if exam data exists
-//       if (examData) {
-//         setExistingExamData(examData);
-//         setFormData(prev => ({
-//           ...prev,
-//           bp: examData.bp || '',
-//           temp: examData.temp || '',
-//           heart_rate: examData.heart_rate || '',
-//           rr: examData.rr || '',
-//           height: examData.height || '',
-//           weight: examData.weight || '',
-//           bmi: examData.bmi || '',
-//           asthma: examData.asthma || '',
-//           allergies: examData.allergies || '',
-//           medical_condition: examData.medical_condition || '',
-//           vision_od: examData.vision_od || '',
-//           vision_os: examData.vision_os || '',
-//           hearing_right: examData.hearing_right || '',
-//           hearing_left: examData.hearing_left || '',
-//           remarks: examData.remarks || '',
-//           assessment: examData.assessment || '',
-//           recommendation: examData.recommendation || '',
-//         }));
-
-//         const examFindings = Array.isArray(examData.findings) ? examData.findings.reduce((acc, finding) => {
-//           acc[finding.body_part] = { status: finding.status, note: finding.notes || '' };
-//           return acc;
-//         }, {}) : {};
-
-//         setFindings(examFindings);
-//       }
-
-//       setLoading(false);
-//     } catch (error) {
-//       console.error('Error fetching exam data:', error);
-//       setLoading(false);
-//     }
-//   };
   useEffect(() => {
 
     fetchExamData();
@@ -224,13 +180,16 @@ function NewAnnualPhysicalExam() {
                 <Form.Control as="textarea" rows={2} name="recommendation" value={formData.recommendation} onChange={handleChange} />
               </Form.Group>
 
-              <div className="d-flex justify-content-end">
+              <div className="d-flex justify-content-between">
+                              <Button variant='secondary' size='sm' onClick={() => goBack()}>Go Back</Button>
+                
                 <Button type="submit" variant="primary">
                   {existingExamData ? 'Update' : 'Submit Form'}
                 </Button>
               </div>
             </Form>
           )}
+          
         </Card.Body>
       </Card>
     </Container>

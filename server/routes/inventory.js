@@ -16,8 +16,8 @@ const runQuery = (query, values = []) => {
 
 // Get All Inventory Items
 router.get('/medicine-inventory', async (req, res) => {
-    const query = `SELECT * FROM medicine_inventory WHERE archived = 0 ORDER BY id DESC`;
-
+    const query = `SELECT * FROM medicines WHERE archived = 1 ORDER BY id DESC`;
+  
     try {
         const rows = await runQuery(query);
         res.json(rows);
@@ -29,28 +29,23 @@ router.get('/medicine-inventory', async (req, res) => {
 
 // ADD NEW MEDICINE
 router.post('/add-medicine', async (req, res) => {
-    const { medicine } = req.body;
+    const { medicine_name, category, quantity, expiry_date, serial_number } = req.body;
   
-    console.log(medicine);
-    if (!medicine) {
+    if (!medicine_name || !category || !quantity || !expiry_date) {
       return res.status(400).json({ success: false, message: 'Missing medicine data.' });
     }
     
     try {
       const insertQuery = `
-        INSERT INTO medicine_inventory 
-        (name, january, february, march, april, may, june, july, august, september, october, november, december, expiry_date, year, remarks)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO medicines (medicine_name, category, quantity, expiry_date, serial_number)
+        VALUES (? , ? , ? , ? , ?)
       `;
-  
       const values = [
-        medicine.name || '',
-        medicine.january || 0, medicine.february || 0, medicine.march || 0, medicine.april || 0,
-        medicine.may || 0, medicine.june || 0, medicine.july || 0, medicine.august || 0,
-        medicine.september || 0, medicine.october || 0, medicine.november || 0, medicine.december || 0,
-        medicine.expiry_date || null,
-        medicine.year || new Date().getFullYear(),
-        medicine.remarks || ''
+          medicine_name,
+          category,
+          quantity || 1,
+          expiry_date,
+          serial_number || ''
       ];
   
       const result = await runQuery(insertQuery, values);
@@ -61,36 +56,34 @@ router.post('/add-medicine', async (req, res) => {
       res.status(500).json({ success: false, message: 'Failed to add medicine.' });
     }
   });
-router.post('/update-single-medicine', async (req, res) => {
-    const { medicine } = req.body;
   
-    if (!medicine || !medicine.id) {
+router.put('/update-medicine/:id', async (req, res) => {
+   const {id } = req.params;
+   const { medicine_name, category, quantity, expiry_date, serial_number } = req.body;
+      
+    if (!medicine_name || !id) {
       return res.status(400).json({ success: false, message: 'Missing medicine or ID.' });
     }
   
     try {
       const updateQuery = `
-        UPDATE medicine_inventory
+        UPDATE medicines
         SET 
-          name = ?,
-          january = ?, february = ?, march = ?, april = ?, may = ?, june = ?,
-          july = ?, august = ?, september = ?, october = ?, november = ?, december = ?,
+          medicine_name = ?,
+          category = ?,
+          quantity = ?,
           expiry_date = ?,
-          year = ?,
-          remarks = ?,
-          last_updated = CURRENT_TIMESTAMP
+          serial_number = ?
         WHERE id = ?
       `;
   
       const values = [
-        medicine.name,
-        medicine.january, medicine.february, medicine.march, medicine.april,
-        medicine.may, medicine.june, medicine.july, medicine.august,
-        medicine.september, medicine.october, medicine.november, medicine.december,
-        medicine.expiry_date,
-        medicine.year,
-        medicine.remarks,
-        medicine.id
+        medicine_name, 
+        category, 
+        quantity, 
+        expiry_date, 
+        serial_number,
+        id
       ];
   
       await runQuery(updateQuery, values);
@@ -102,8 +95,8 @@ router.post('/update-single-medicine', async (req, res) => {
     }
   });
 
-  router.put('/remove-medicine-row', async (req, res) => {
-    const { id } = req.body;
+  router.put('/remove-medicine/:id', async (req, res) => {
+    const { id } = req.params;
   
     if (!id) {
       return res.status(400).json({ success: false, message: 'Missing medicine or ID.' });
@@ -111,9 +104,9 @@ router.post('/update-single-medicine', async (req, res) => {
   
     try {
       const updateQuery = `
-        UPDATE medicine_inventory
+        UPDATE medicines
         SET 
-          archived = 1
+          archived = 0
         WHERE id = ?
       `;
       await runQuery(updateQuery, id);
@@ -136,7 +129,7 @@ router.post('/update-single-medicine', async (req, res) => {
 
   // Get All Inventory Items
 router.get('/equipment-inventory', async (req, res) => {
-  const query = `SELECT * FROM equipment_inventory WHERE archived = 0 ORDER BY id DESC`;
+  const query = `SELECT * FROM equipments WHERE archived = 1 ORDER BY id DESC`;
 
   try {
       const rows = await runQuery(query);
@@ -149,27 +142,25 @@ router.get('/equipment-inventory', async (req, res) => {
 
 // ADD NEW equipment
 router.post('/add-equipment', async (req, res) => {
-  const { equipment } = req.body;
+  const { equipment_name, category, serial_number, status, quantity } = req.body;
 
-  console.log(equipment);
-  if (!equipment) {
+  if (!equipment_name) {
     return res.status(400).json({ success: false, message: 'Missing equipment data.' });
   }
   
   try {
     const insertQuery = `
-      INSERT INTO equipment_inventory 
-      (name, january, february, march, april, may, june, july, august, september, october, november, december, year, remarks)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO equipments
+      (equipment_name, category, quantity, status, serial_number)
+      VALUES (? , ? , ? , ? , ?)
     `;
 
     const values = [
-      equipment.name || '',
-      equipment.january || 0, equipment.february || 0, equipment.march || 0, equipment.april || 0,
-      equipment.may || 0, equipment.june || 0, equipment.july || 0, equipment.august || 0,
-      equipment.september || 0, equipment.october || 0, equipment.november || 0, equipment.december || 0,
-      equipment.year || new Date().getFullYear(),
-      equipment.remarks || ''
+      equipment_name,
+      category,
+      quantity,
+      status,
+      serial_number
     ];
 
     const result = await runQuery(insertQuery, values);
@@ -180,34 +171,34 @@ router.post('/add-equipment', async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to add equipment.' });
   }
 });
-router.post('/update-single-equipment', async (req, res) => {
-  const { equipment } = req.body;
+router.put('/update-equipment/:id', async (req, res) => {
+  const { id } = req.params;
+  const { equipment_name, category, serial_number, status, quantity } = req.body;
 
-  if (!equipment || !equipment.id) {
+
+  if (!id || !equipment_name) {
     return res.status(400).json({ success: false, message: 'Missing equipment or ID.' });
   }
 
   try {
     const updateQuery = `
-      UPDATE equipment_inventory
+      UPDATE equipments
       SET 
-        name = ?,
-        january = ?, february = ?, march = ?, april = ?, may = ?, june = ?,
-        july = ?, august = ?, september = ?, october = ?, november = ?, december = ?,
-        year = ?,
-        remarks = ?,
-        last_updated = CURRENT_TIMESTAMP
+      equipment_name = ?,
+      category = ?,
+      quantity = ?,
+      status = ?,
+      serial_number = ? 
       WHERE id = ?
     `;
 
     const values = [
-      equipment.name,
-      equipment.january, equipment.february, equipment.march, equipment.april,
-      equipment.may, equipment.june, equipment.july, equipment.august,
-      equipment.september, equipment.october, equipment.november, equipment.december,
-      equipment.year,
-      equipment.remarks,
-      equipment.id
+     equipment_name,
+     category,
+     quantity,
+     status,
+     serial_number,
+     id
     ];
 
     await runQuery(updateQuery, values);
@@ -219,8 +210,8 @@ router.post('/update-single-equipment', async (req, res) => {
   }
 });
 
-router.put('/remove-equipment-row', async (req, res) => {
-  const { id } = req.body;
+router.put('/remove-equipment/:id', async (req, res) => {
+  const { id } = req.params;
 
   if (!id) {
     return res.status(400).json({ success: false, message: 'Missing equipment or ID.' });
@@ -228,9 +219,9 @@ router.put('/remove-equipment-row', async (req, res) => {
 
   try {
     const updateQuery = `
-      UPDATE equipment_inventory
+      UPDATE equipments
       SET 
-        archived = 1
+        archived = 0
       WHERE id = ?
     `;
     await runQuery(updateQuery, id);
@@ -250,7 +241,7 @@ router.put('/remove-equipment-row', async (req, res) => {
 // Supply
 // Get All Inventory Items
 router.get('/supply-inventory', async (req, res) => {
-  const query = `SELECT * FROM supply_inventory WHERE archived = 0 ORDER BY id DESC`;
+  const query = `SELECT * FROM supplies WHERE archived = 1 ORDER BY id DESC`;
 
   try {
       const rows = await runQuery(query);
@@ -263,27 +254,25 @@ router.get('/supply-inventory', async (req, res) => {
 
 // ADD NEW supply
 router.post('/add-supply', async (req, res) => {
-  const { supply } = req.body;
+  const { supply_name, category, quantity, serial_number, status } = req.body;
 
-  console.log(supply);
-  if (!supply) {
+  if (!supply_name) {
     return res.status(400).json({ success: false, message: 'Missing supply data.' });
   }
   
   try {
     const insertQuery = `
-      INSERT INTO supply_inventory 
-      (name, january, february, march, april, may, june, july, august, september, october, november, december, year, remarks)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO supplies
+      (supply_name, category, quantity, serial_number, status)
+      VALUES (?, ?, ?, ?, ?)
     `;
 
     const values = [
-      supply.name || '',
-      supply.january || 0, supply.february || 0, supply.march || 0, supply.april || 0,
-      supply.may || 0, supply.june || 0, supply.july || 0, supply.august || 0,
-      supply.september || 0, supply.october || 0, supply.november || 0, supply.december || 0,
-      supply.year || new Date().getFullYear(),
-      supply.remarks || ''
+      supply_name,
+      category,
+      quantity,
+      serial_number,
+      status,
     ];
 
     const result = await runQuery(insertQuery, values);
@@ -294,34 +283,34 @@ router.post('/add-supply', async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to add supply.' });
   }
 });
-router.post('/update-single-supply', async (req, res) => {
-  const { supply } = req.body;
 
-  if (!supply || !supply.id) {
+router.put('/update-supply/:id', async (req, res) => {
+  const {id} = req.params;
+  const { supply_name, category, quantity, serial_number, status } = req.body;
+
+  if (!id || !supply_name) {
     return res.status(400).json({ success: false, message: 'Missing supply or ID.' });
   }
 
   try {
     const updateQuery = `
-      UPDATE supply_inventory
+      UPDATE supplies
       SET 
-        name = ?,
-        january = ?, february = ?, march = ?, april = ?, may = ?, june = ?,
-        july = ?, august = ?, september = ?, october = ?, november = ?, december = ?,
-        year = ?,
-        remarks = ?,
-        last_updated = CURRENT_TIMESTAMP
+        supply_name = ?,
+        category= ?,
+        quantity = ?,
+        status = ?,
+        serial_number = ?
       WHERE id = ?
     `;
 
     const values = [
-      supply.name,
-      supply.january, supply.february, supply.march, supply.april,
-      supply.may, supply.june, supply.july, supply.august,
-      supply.september, supply.october, supply.november, supply.december,
-      supply.year,
-      supply.remarks,
-      supply.id
+      supply_name,
+      category,
+      quantity,
+      status,
+      serial_number,
+      id
     ];
 
     await runQuery(updateQuery, values);
@@ -333,8 +322,8 @@ router.post('/update-single-supply', async (req, res) => {
   }
 });
 
-router.put('/remove-supply-row', async (req, res) => {
-  const { id } = req.body;
+router.put('/remove-supply/:id', async (req, res) => {
+  const { id } = req.params;
 
   if (!id) {
     return res.status(400).json({ success: false, message: 'Missing supply or ID.' });
@@ -342,9 +331,9 @@ router.put('/remove-supply-row', async (req, res) => {
 
   try {
     const updateQuery = `
-      UPDATE supply_inventory
+      UPDATE supplies
       SET 
-        archived = 1
+        archived = 0
       WHERE id = ?
     `;
     await runQuery(updateQuery, id);

@@ -44,7 +44,7 @@ async function notifyAdminsStaffAndOwner(title, message, ownerId = null) {
 
 // Get all patients
 router.get('/', async (req, res) => {
-    const query = `SELECT s.*, u.name, u.email FROM students s JOIN users u on u.id = s.user_id WHERE u.role = "student" ORDER BY full_name`;
+    const query = `SELECT s.*, u.name, u.email, u.username FROM students s JOIN users u on u.id = s.user_id WHERE u.role = "student" ORDER BY full_name`;
 
     try {
         const rows = await runQuery(query);
@@ -142,16 +142,13 @@ router.post('/add-annual-physical-exam', async (req, res) => {
             patient_id
           );
           req.io.emit("updateNotifications");
-        req.io.emit("updateAPE");
-        // Respond with success message
+        req.io.emit("updateAPE", {user_id: patient_id});
         res.status(200).json({ success: true, message: 'Annual physical exam added successfully' });
     } catch (err) {
         console.error("Error during insertion:", err);
         res.status(500).json({ success: false, message: 'Failed to add annual physical exam' });
     }
 });
-
-
 
 router.put('/update-annual-physical-exam/:id', async (req, res) => {
     const { id } = req.params;
@@ -225,7 +222,8 @@ router.put('/update-annual-physical-exam/:id', async (req, res) => {
             patient_id
           );
           req.io.emit("updateNotifications");
-        req.io.emit("updateAPE");
+          req.io.emit("updateAPE", {user_id: patient_id});
+
         // Respond with success message
         res.status(200).json({ success: true, message: 'Annual physical exam updated successfully' });
     } catch (err) {
@@ -366,13 +364,55 @@ router.get('/search-students', async (req, res) => {
         if (students.length > 0) {
             res.json(students);
         } else {
-            // res.status(404).json({ error: 'No students found' });
         }
     } catch (error) {
         console.error('Error searching students:', error.message, error.stack);
         res.status(500).json({ error: 'Failed to fetch students', detail: error.message });
     }
 });
+
+// router.post('/add-prescriptions', async (req, res) => {
+//     const { user_id, prescriptions, notes, prescribed_by } = req.body;
+//     console.log(req.body);
+
+//     if (!user_id || !prescriptions || prescriptions.length === 0) {
+//         return res.status(400).json({ success: false, message: 'User ID and at least one prescription are required.' });
+//     }
+
+//     try {
+//         // 1. Insert into prescription_headers first
+//         const insertHeaderQuery = `
+//         INSERT INTO prescription_headers (user_id, prescribed_by, notes)
+//         VALUES (?, ?, ?)
+//       `;
+//         const result = await runQuery(insertHeaderQuery, [user_id, prescribed_by, notes || null]);
+
+//         const prescriptionId = result.insertId;  // Get the inserted prescription_id
+//         console.log('New Prescription ID:', prescriptionId);
+
+//         // 2. Insert into prescription_medicines
+//         const insertMedicinesQuery = `
+//         INSERT INTO prescription_medicines (prescription_id, medicine_name, dosage, frequency, duration)
+//         VALUES ${prescriptions.map(() => `(?, ?, ?, ?, ?)`).join(', ')}
+//       `;
+
+//         const medicineValues = prescriptions.flatMap(pres => [
+//             prescriptionId,
+//             pres.medicine,
+//             pres.dosage,
+//             pres.frequency,
+//             pres.duration
+//         ]);
+
+//         await runQuery(insertMedicinesQuery, medicineValues);
+//         req.io.emit("updatePrescription");
+//         res.status(200).json({ success: true, message: 'Prescription added successfully.' });
+
+//     } catch (err) {
+//         console.error('Error adding prescription:', err);
+//         res.status(500).json({ success: false, message: 'Failed to add prescription.' });
+//     }
+// });
 
 router.post('/add-prescriptions', async (req, res) => {
     const { user_id, prescriptions, notes, prescribed_by } = req.body;
@@ -388,24 +428,20 @@ router.post('/add-prescriptions', async (req, res) => {
         INSERT INTO prescription_headers (user_id, prescribed_by, notes)
         VALUES (?, ?, ?)
       `;
-
         const result = await runQuery(insertHeaderQuery, [user_id, prescribed_by, notes || null]);
 
-        const prescriptionId = result.insertId;  // Get the inserted prescription_id
+        const prescriptionId = result.insertId; 
         console.log('New Prescription ID:', prescriptionId);
 
         // 2. Insert into prescription_medicines
         const insertMedicinesQuery = `
-        INSERT INTO prescription_medicines (prescription_id, medicine_name, dosage, frequency, duration)
-        VALUES ${prescriptions.map(() => `(?, ?, ?, ?, ?)`).join(', ')}
+        INSERT INTO prescription_medicines (prescription_id, medicine_name)
+        VALUES ${prescriptions.map(() => `(?, ?)`).join(', ')}
       `;
 
         const medicineValues = prescriptions.flatMap(pres => [
             prescriptionId,
             pres.medicine,
-            pres.dosage,
-            pres.frequency,
-            pres.duration
         ]);
 
         await runQuery(insertMedicinesQuery, medicineValues);
@@ -417,6 +453,7 @@ router.post('/add-prescriptions', async (req, res) => {
         res.status(500).json({ success: false, message: 'Failed to add prescription.' });
     }
 });
+
 
 router.get('/get-prescriptions-by-id/:user_id', async (req, res) => {
     const { user_id } = req.params;
@@ -432,10 +469,7 @@ router.get('/get-prescriptions-by-id/:user_id', async (req, res) => {
           ph.user_id,
           ph.notes,
           ph.created_at,
-          pm.medicine_name,
-          pm.dosage,
-          pm.frequency,
-          pm.duration
+          pm.medicine_name
         FROM prescription_headers ph
         JOIN prescription_medicines pm ON ph.prescription_id = pm.prescription_id
         WHERE ph.user_id = ?
@@ -457,10 +491,7 @@ router.get('/get-prescriptions-by-id/:user_id', async (req, res) => {
                     };
                 }
                 acc[item.prescription_id].prescriptions.push({
-                    medicine: item.medicine_name,
-                    dosage: item.dosage,
-                    frequency: item.frequency,
-                    duration: item.duration
+                    medicine: item.medicine_name
                 });
                 return acc;
             }, {})
@@ -473,12 +504,137 @@ router.get('/get-prescriptions-by-id/:user_id', async (req, res) => {
     }
 });
 
+// router.get('/get-prescriptions-by-id/:user_id', async (req, res) => {
+//     const { user_id } = req.params;
+
+//     if (!user_id) {
+//         return res.status(400).json({ success: false, message: 'Missing user_id.' });
+//     }
+
+//     try {
+//         const query = `
+//         SELECT 
+//           ph.prescription_id,
+//           ph.user_id,
+//           ph.notes,
+//           ph.created_at,
+//           pm.medicine_name,
+//           pm.dosage,
+//           pm.frequency,
+//           pm.duration
+//         FROM prescription_headers ph
+//         JOIN prescription_medicines pm ON ph.prescription_id = pm.prescription_id
+//         WHERE ph.user_id = ?
+//         ORDER BY ph.created_at DESC
+//       `;
+
+//         const prescriptions = await runQuery(query, [user_id]);
+
+//         // Group by prescription_id
+//         const grouped = Object.values(
+//             prescriptions.reduce((acc, item) => {
+//                 if (!acc[item.prescription_id]) {
+//                     acc[item.prescription_id] = {
+//                         prescription_id: item.prescription_id,
+//                         user_id: item.user_id,
+//                         created_at: item.created_at,
+//                         notes: item.notes,
+//                         prescriptions: []
+//                     };
+//                 }
+//                 acc[item.prescription_id].prescriptions.push({
+//                     medicine: item.medicine_name,
+//                     dosage: item.dosage,
+//                     frequency: item.frequency,
+//                     duration: item.duration
+//                 });
+//                 return acc;
+//             }, {})
+//         );
+
+//         res.json(grouped);
+//     } catch (err) {
+//         console.error('Error fetching prescriptions:', err);
+//         res.status(500).json({ success: false, message: 'Failed to fetch prescriptions.' });
+//     }
+// });
+
 
 router.post('/add-patient', async (req, res) => {
     const {
-        username,
-        password,
-        email,
+      username,
+      password,
+      email,
+      student_id,
+      full_name,
+      course,
+      year,
+      birthdate,
+      sex,
+      contact_number,
+      address,
+      contact_person,
+      contact_person_number,
+      role, // optional
+    } = req.body;
+  
+    if (!username || !email || !student_id) {
+      return res.status(400).json({ success: false, message: 'Missing required fields.' });
+    }
+  
+    try {
+      // 1. Check if email already exists
+      const checkEmailQuery = `SELECT id FROM users WHERE email = ? LIMIT 1`;
+      const existingUser = await runQuery(checkEmailQuery, [email]);
+  
+      if (existingUser.length > 0) {
+        return res.status(400).json({ success: false, message: 'Email already exists.' });
+      }
+  
+      // 2. Check if student_id already exists
+      const checkStudentIdQuery = `SELECT id FROM students WHERE student_id = ? LIMIT 1`;
+      const existingStudent = await runQuery(checkStudentIdQuery, [student_id]);
+  
+      if (existingStudent.length > 0) {
+        return res.status(400).json({ success: false, message: 'Student ID already exists.' });
+      }
+  
+      const checkUsernameQuery = `SELECT id FROM users WHERE username = ? LIMIT 1`;
+      const existingUsername = await runQuery(checkUsernameQuery, [username]);
+  
+      if (existingUsername.length > 0) {
+        return res.status(400).json({ success: false, message: 'Username already exists.' });
+      }
+      const hashedPassword = await bcrypt.hash(password, 10);
+  
+      let userInsertQuery;
+      let userInsertParams;
+  
+      if (role) {
+        userInsertQuery = `
+          INSERT INTO users (username, password, name, email, role)
+          VALUES (?, ?, ?, ?, ?)
+        `;
+        userInsertParams = [username, hashedPassword, full_name, email, role];
+      } else {
+        userInsertQuery = `
+          INSERT INTO users (username, password, name, email)
+          VALUES (?, ?, ?, ?)
+        `;
+        userInsertParams = [username, hashedPassword, full_name, email];
+      }
+  
+      const userResult = await runQuery(userInsertQuery, userInsertParams);
+      const userId = userResult.insertId;
+  
+      // 4. Insert into students table
+      const studentInsertQuery = `
+        INSERT INTO students (user_id, student_id, full_name, course, year, birthdate, sex, contact_number, email, address, contact_person, contact_person_number)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+  
+      await runQuery(studentInsertQuery, [
+        userId,
         student_id,
         full_name,
         course,
@@ -486,66 +642,20 @@ router.post('/add-patient', async (req, res) => {
         birthdate,
         sex,
         contact_number,
+        email,
         address,
         contact_person,
         contact_person_number
-    } = req.body;
-    if (!username || !email || !student_id) {
-        return res.status(400).json({ success: false, message: 'Missing required fields.' });
-    }
-
-    try {
-        // 1. Check if email already exists
-        const checkEmailQuery = `SELECT id FROM users WHERE email = ? LIMIT 1`;
-        const existingUser = await runQuery(checkEmailQuery, [email]);
-
-        if (existingUser.length > 0) {
-            return res.status(400).json({ success: false, message: 'Email already exists.' });
-        }
-
-        // 2. Check if student_id already exists
-        const checkStudentIdQuery = `SELECT id FROM students WHERE student_id = ? LIMIT 1`;
-        const existingStudent = await runQuery(checkStudentIdQuery, [student_id]);
-
-        if (existingStudent.length > 0) {
-            return res.status(400).json({ success: false, message: 'Student ID already exists.' });
-        }
-
-        const hashedPassword = await bcrypt.hash(password, 10);
-        // 2. Insert into users table
-        const userInsertQuery = `
-        INSERT INTO users (username, password, name, email)
-        VALUES (?, ?, ?, ?)
-      `;
-        const userResult = await runQuery(userInsertQuery, [username, hashedPassword, full_name, email]);
-        const userId = userResult.insertId;
-
-        // 3. Insert into students table
-        const studentInsertQuery = `
-        INSERT INTO students (user_id, student_id, full_name, course, year, birthdate, sex, contact_number, email, address, contact_person, contact_person_number)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
-        await runQuery(studentInsertQuery, [
-            userId,
-            student_id,
-            full_name,
-            course,
-            year,
-            birthdate,
-            sex,
-            contact_number,
-            email,
-            address,
-            contact_person,
-            contact_person_number
-        ]);
-        req.io.emit("updateUser");
-        res.status(200).json({ success: true, message: 'Student added successfully.' });
+      ]);
+  
+      req.io.emit("updateUser");
+      res.status(200).json({ success: true, message: 'Student added successfully.' });
     } catch (error) {
-        console.error('Error adding student:', error);
-        res.status(500).json({ success: false, message: 'Failed to add student.' });
+      console.error('Error adding student:', error);
+      res.status(500).json({ success: false, message: 'Failed to add student.' });
     }
-});
+  });
+  
 
 router.post('/edit-details', async (req, res) => {
     const {
@@ -563,6 +673,10 @@ router.post('/edit-details', async (req, res) => {
       contact_person,
       contact_person_number,
       password, 
+      prevRole,
+      newRole,
+      role,
+
     } = req.body;
     console.log(req.body);
     if (!id || !username || !email || !student_id) {
@@ -593,13 +707,18 @@ router.post('/edit-details', async (req, res) => {
       }
   
       // 3. Update users table
-      let updateUserQuery = `UPDATE users SET username = ?, email = ?, name = ?`;
+      let updateUserQuery = `UPDATE users SET username = ?, email = ?, name = ? `;
       const updateUserParams = [username, email, full_name];
   
       if (password) {
         const hashedPassword = await bcrypt.hash(password, 10);
         updateUserQuery += `, password = ?`;
         updateUserParams.push(hashedPassword);
+      }
+  
+      if (newRole && newRole !== prevRole) {
+        updateUserQuery += `, role = ?`;
+        updateUserParams.push(newRole);
       }
   
       updateUserQuery += ` WHERE id = ?`;
@@ -639,13 +758,149 @@ router.post('/edit-details', async (req, res) => {
         contact_person_number,
         id,
       ]);
-      req.io.emit("updateUser");
-      res.status(200).json({ success: true, message: 'Student updated successfully.' });
+  
+      // 5. Fetch updated user for emit
+      const getUserQuery = `
+        SELECT 
+          u.id as user_id, u.username, u.email, u.name AS full_name, u.role,
+          s.student_id, s.course, s.year, s.birthdate, s.sex,
+          s.contact_number, s.address, s.contact_person, s.contact_person_number
+        FROM users u
+        LEFT JOIN students s ON u.id = s.user_id
+        WHERE u.id = ?
+        LIMIT 1
+      `;
+      const updatedUser = (await runQuery(getUserQuery, [id]))[0];
+  
+      // 6. Emit updates
+      req.io.emit("updateUser", updatedUser);
+  
+      // Emit role change separately
+      if (newRole && newRole !== prevRole) {
+        req.io.emit("changeUserRole", {
+          id,
+          oldRole: role,
+          newRole
+        });
+        
+      }
+  
+      res.status(200).json({
+        success: true,
+        message: 'Student updated successfully.',
+        updatedUser
+      });
     } catch (error) {
       console.error('Error updating student:', error);
       res.status(500).json({ success: false, message: 'Failed to update student.' });
     }
   });
+  
+// router.post('/edit-details', async (req, res) => {
+//     const {
+//       id, 
+//       username,
+//       email,
+//       student_id,
+//       full_name,
+//       course,
+//       year,
+//       birthdate,
+//       sex,
+//       contact_number,
+//       address,
+//       contact_person,
+//       contact_person_number,
+//       password, 
+//       newRole,
+//       role,
+//     } = req.body;
+//     console.log(req.body);
+//     if (!id || !username || !email || !student_id) {
+//       return res.status(400).json({ success: false, message: 'Missing required fields.' });
+//     }
+  
+//     try {
+//       // 1. Check if email already exists (excluding current user)
+//       const checkEmailQuery = `SELECT id FROM users WHERE email = ? AND id != ? LIMIT 1`;
+//       const existingEmail = await runQuery(checkEmailQuery, [email, id]);
+  
+//       if (existingEmail.length > 0) {
+//         return res.status(400).json({ success: false, message: 'Email already in use by another account.' });
+//       }
+  
+//       // 2. Check if student_id already exists (excluding current student)
+//       const checkStudentIdQuery = `
+//         SELECT s.id 
+//         FROM students s
+//         JOIN users u ON s.user_id = u.id
+//         WHERE s.student_id = ? AND u.id != ? 
+//         LIMIT 1
+//       `;
+//       const existingStudent = await runQuery(checkStudentIdQuery, [student_id, id]);
+  
+//       if (existingStudent.length > 0) {
+//         return res.status(400).json({ success: false, message: 'Student ID already in use by another account.' });
+//       }
+  
+//       // 3. Update users table
+//       let updateUserQuery = `UPDATE users SET username = ?, email = ?, name = ? `;
+//       const updateUserParams = [username, email, full_name];
+  
+//       if (password) {
+//         const hashedPassword = await bcrypt.hash(password, 10);
+//         updateUserQuery += `, password = ?`;
+//         updateUserParams.push(hashedPassword);
+//       }
+//       if (newRole) {
+//         updateUserQuery += `, role = ?`;
+//         updateUserParams.push(newRole);
+//       }
+
+//       updateUserQuery += ` WHERE id = ?`;
+//       updateUserParams.push(id);
+  
+//       await runQuery(updateUserQuery, updateUserParams);
+  
+//       // 4. Update students table
+//       const updateStudentQuery = `
+//         UPDATE students
+//         SET 
+//           student_id = ?,
+//           full_name = ?,
+//           course = ?,
+//           year = ?,
+//           birthdate = ?,
+//           sex = ?,
+//           contact_number = ?,
+//           email = ?,
+//           address = ?,
+//           contact_person = ?,
+//           contact_person_number = ?
+//         WHERE user_id = ?
+//       `;
+  
+//       await runQuery(updateStudentQuery, [
+//         student_id,
+//         full_name,
+//         course,
+//         year,
+//         birthdate,
+//         sex,
+//         contact_number,
+//         email,
+//         address,
+//         contact_person,
+//         contact_person_number,
+//         id,
+//       ]);
+//       req.io.emit("updateUser");
+//       res.status(200).json({ success: true, message: 'Student updated successfully.' });
+//     } catch (error) {
+//       console.error('Error updating student:', error);
+//       res.status(500).json({ success: false, message: 'Failed to update student.' });
+//     }
+//   });
   
 
 module.exports = router;

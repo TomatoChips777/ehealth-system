@@ -5,6 +5,7 @@ import CalculateAge from '../extra/CalculateAge';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../AuthContext';
 import generatePrescriptionPDF from './PrescriptionPDF';
+import StudentLogs from '../Patients/components/StudentLogs';
 function Prescriptions() {
   const { user } = useAuth();
   const location = useLocation();
@@ -12,15 +13,19 @@ function Prescriptions() {
   const patient = location.state?.patient;
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(patient || null);
+  // const [prescriptions, setPrescriptions] = useState([
+  //   { medicine: '', dosage: '', frequency: '', duration: '' }
+  // ]);
   const [prescriptions, setPrescriptions] = useState([
-    { medicine: '', dosage: '', frequency: '', duration: '' }
+    { medicine: '' }
   ]);
+  
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [prescriptionData, setPrescriptionData] = useState(null);
-
+  const [studentLogs, setStudentLogs] = useState(null);
   const fetchStudents = async () => {
     try {
       const response = await axios.get(`${import.meta.env.VITE_GET_PATIENTS}`);
@@ -30,6 +35,18 @@ function Prescriptions() {
     }
   };
 
+ const fetchStudentLogs = async (user_id) =>{
+  try{
+
+    const response = await axios.get(`${import.meta.env.VITE_GET_STUDENT_LOGS_BY_ID}/${user_id}`)
+    setStudentLogs(response.data);
+
+  }catch(error){
+    setStudentLogs([]);
+  }
+ 
+}
+
   useEffect(() => {
     fetchStudents();
   }, []);
@@ -37,6 +54,7 @@ function Prescriptions() {
     if (patient) {
       setSelectedStudent(patient);
       setSearchQuery(patient.student_id);
+      fetchStudentLogs(patient.user_id);
     } else if (searchQuery.trim() === '') {
       setSelectedStudent(null);
     } else {
@@ -48,18 +66,31 @@ function Prescriptions() {
       );
       setSelectedStudent(match || null);
     }
-  }, [searchQuery, students, patient]);
+    if (selectedStudent?.user_id) {
+      fetchStudentLogs(selectedStudent.user_id);
+    }
+  }, [searchQuery, students, patient, selectedStudent]);
 
-  const handlePrescriptionChange = (index, field, value) => {
+  // const handlePrescriptionChange = (index, field, value) => {
+  //   const updatedPrescriptions = [...prescriptions];
+  //   updatedPrescriptions[index][field] = value;
+  //   setPrescriptions(updatedPrescriptions);
+  // };
+
+  const handlePrescriptionChange = (index, value) => {
     const updatedPrescriptions = [...prescriptions];
-    updatedPrescriptions[index][field] = value;
+    updatedPrescriptions[index].medicine = value;
     setPrescriptions(updatedPrescriptions);
   };
+  
+  // const addPrescriptionField = () => {
+  //   setPrescriptions([...prescriptions, { medicine: '', dosage: '', frequency: '', duration: '' }]);
+  // };
 
   const addPrescriptionField = () => {
-    setPrescriptions([...prescriptions, { medicine: '', dosage: '', frequency: '', duration: '' }]);
+    setPrescriptions([...prescriptions, { medicine: '' }]);
   };
-
+  
   const removePrescriptionField = (index) => {
     if (prescriptions.length === 1) return; // Always keep at least one
     const updatedPrescriptions = prescriptions.filter((_, i) => i !== index);
@@ -73,7 +104,7 @@ function Prescriptions() {
       return;
     }
 
-    if (prescriptions.some(p => !p.medicine || !p.dosage || !p.frequency || !p.duration)) {
+    if (prescriptions.some(p => !p.medicine)) {
       setError('Please fill in all fields for each medicine.');
       return;
     }
@@ -83,6 +114,7 @@ function Prescriptions() {
       prescriptions,
       notes,
       prescribed_by: user.id,
+      student: selectedStudent,
     };
 
     try {
@@ -93,8 +125,7 @@ function Prescriptions() {
       setShowDownloadModal(true);
 
       // CLEAR FORM AFTER SUCCESS
-      setSelectedStudent(null);
-      setPrescriptions([{ medicine: '', dosage: '', frequency: '', duration: '' }]);
+      setPrescriptions([{ medicine: ''}]);
       setNotes('');
       setSearchQuery('');
 
@@ -102,6 +133,7 @@ function Prescriptions() {
       console.error('Error saving prescription:', error);
       setError('Failed to save prescription. Please try again.');
     }
+    
   };
 
   return (
@@ -150,36 +182,12 @@ function Prescriptions() {
                   <Form.Label>Medicines</Form.Label>
                   {prescriptions.map((prescription, index) => (
                     <Row key={index} className="mb-2">
-                      <Col md={3}>
+                      <Col md={10}>
                         <Form.Control
                           type="text"
                           placeholder="Medicine Name"
                           value={prescription.medicine}
-                          onChange={(e) => handlePrescriptionChange(index, 'medicine', e.target.value)}
-                        />
-                      </Col>
-                      <Col md={2}>
-                        <Form.Control
-                          type="text"
-                          placeholder="Dosage"
-                          value={prescription.dosage}
-                          onChange={(e) => handlePrescriptionChange(index, 'dosage', e.target.value)}
-                        />
-                      </Col>
-                      <Col md={3}>
-                        <Form.Control
-                          type="text"
-                          placeholder="Frequency"
-                          value={prescription.frequency}
-                          onChange={(e) => handlePrescriptionChange(index, 'frequency', e.target.value)}
-                        />
-                      </Col>
-                      <Col md={2}>
-                        <Form.Control
-                          type="text"
-                          placeholder="Duration"
-                          value={prescription.duration}
-                          onChange={(e) => handlePrescriptionChange(index, 'duration', e.target.value)}
+                          onChange={(e) => handlePrescriptionChange(index, e.target.value)}
                         />
                       </Col>
                       <Col md={2}>
@@ -187,20 +195,21 @@ function Prescriptions() {
                           variant="danger"
                           onClick={() => removePrescriptionField(index)}
                           disabled={prescriptions.length === 1}
+                          size='sm'
                         >
                           Remove
                         </Button>
                       </Col>
                     </Row>
                   ))}
-                  <Button variant="success" onClick={addPrescriptionField}>
+                  <Button variant="success" size='sm' onClick={addPrescriptionField}>
                     + Add More
                   </Button>
                 </Form.Group>
 
                 {/* Notes */}
                 <Form.Group className="mb-3">
-                  <Form.Label>Additional Notes</Form.Label>
+                  <Form.Label>Notes</Form.Label>
                   <Form.Control
                     as="textarea"
                     rows={3}
@@ -210,7 +219,7 @@ function Prescriptions() {
                 </Form.Group>
 
                 {/* Submit */}
-                <Button variant="primary" onClick={handleSubmit}>
+                <Button variant="primary" size='sm' onClick={handleSubmit}>
                   Submit Prescription
                 </Button>
               </Form>
@@ -221,21 +230,7 @@ function Prescriptions() {
       </Row>
       {/* Prescription Summary */}
       {selectedStudent && prescriptions.length > 0 && (
-        <Card className="mt-4">
-          <Card.Header as="h5">Prescription Summary</Card.Header>
-          <Card.Body>
-            <h6>Student: {selectedStudent.full_name}</h6>
-            <p><strong>Condition:</strong> {selectedStudent.condition}</p>
-            <ul>
-              {prescriptions.map((pres, index) => (
-                <li key={index}>
-                  {pres.medicine} - {pres.dosage} - {pres.frequency} - {pres.duration}
-                </li>
-              ))}
-            </ul>
-            <p><strong>Notes:</strong> {notes}</p>
-          </Card.Body>
-        </Card>
+        <StudentLogs logs={studentLogs}/>
       )}
 
       <Modal show={showDownloadModal} onHide={() => setShowDownloadModal(false)} centered backdrop="static" keyboard={false} >
@@ -255,7 +250,7 @@ function Prescriptions() {
             No
           </Button>
           <Button variant="primary" onClick={() => {
-            generatePrescriptionPDF(prescriptionData.user_id, prescriptionData.prescriptions, prescriptionData.notes);
+            generatePrescriptionPDF(prescriptionData.student, prescriptionData.prescriptions, prescriptionData.notes);
             setShowDownloadModal(false);
           }}>
             Yes, Download

@@ -1,255 +1,252 @@
-import React, { useEffect, useState } from 'react';
-import { Container, Table, Button, Form, Card } from 'react-bootstrap';
+import { useEffect, useMemo, useState } from 'react';
+import { Container, Table, Form, Button, Row, Col, Card, Spinner, OverlayTrigger, Tooltip } from 'react-bootstrap';
+
+import TextTruncate from '../extra/TextTruncate';
+import AddInventoryModal from './Medicines/components/AddMedicineModal'; // Keep or rename to AddMedicineModal if preferred
+import EditInventoryModal from './Medicines/components/EditInventoryModal'; // Same here
 import axios from 'axios';
-import { exportToPDF } from './components/ConvertToPDF';
-function MedicineInventory() {
-    const [medicines, setMedicines] = useState([
+import { io } from 'socket.io-client';
+import PaginationControls from '../extra/Paginations';
 
-    ]);
+function MedicineInventory({ handleAskButton }) {
+  const [medicines, setMedicines] = useState([]);
 
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
-    const fetchMedicines = async () => {
-        try {
-            const response = await axios.get(`${import.meta.env.VITE_GET_MEDICINES}`)
-            setMedicines(response.data);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedMedicine, setSelectedMedicine] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-        } catch (error) {
+  const [newMedicine, setNewMedicine] = useState({
+    item_name: '',
+    category: '',
+    quantity: 1,
+    status: 'New',
+    serial_number: ''
+  });
 
-        }
+  const fetchData = async () => {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_GET_INVENTORY_ITEM}`);
+      setMedicines(response.data);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    useEffect(() => {
-        fetchMedicines();
-    }, []);
-
-    const handleInputChange = async (index, field, value) => {
-        const updatedMedicines = [...medicines];
-        updatedMedicines[index][field] = value;
-        setMedicines(updatedMedicines);
-
-        // Sync only the edited row
-        const editedRow = updatedMedicines[index];
-
-        try {
-            await axios.post(`${import.meta.env.VITE_UPDATE_MEDICINE_ROW}`, { medicine: editedRow });
-            console.log('Single row synced successfully');
-        } catch (error) {
-            console.error('Error syncing single row:', error);
-        }
+  useEffect(() => {
+    fetchData();
+    const socket = io(`${import.meta.env.VITE_API_URL}`);
+    socket.on('updateInventory', () => {
+      fetchData();
+    });
+    return () => {
+      socket.disconnect();
     };
+  }, []);
 
-    const addNewRow = async () => {
-        const newMedicine = {
-            name: '',
-            january: 0,
-            february: 0,
-            march: 0,
-            april: 0,
-            may: 0,
-            june: 0,
-            july: 0,
-            august: 0,
-            september: 0,
-            october: 0,
-            november: 0,
-            december: 0,
-            expiry_date: '',
-            year: new Date().getFullYear(),
-            remarks: ''
-        };
+  const filteredItems = useMemo(() => {
+    return medicines.filter(item => {
+      const matchesSearch =
+        item.item_name.toLowerCase().includes(search.toLowerCase()) ||
+        item.serial_number.toLowerCase().includes(search.toLowerCase()) ||
+        item.category.toLowerCase().includes(search.toLowerCase());
 
-        const updated = [...medicines, newMedicine];
-        try {
-            const response = await axios.post(`${import.meta.env.VITE_ADD_MEDICINE}`, { medicine: newMedicine });
-            fetchMedicines();
-        } catch (error) {
-        }
+      const matchesStatus = statusFilter === 'All' || item.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [medicines, search, statusFilter]);
 
+  const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
 
-    };
+  const currentData = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredItems.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredItems, currentPage, itemsPerPage]);
 
-    const handleDownloadPDF = () => {
-        const columns = [
-            'Medicines', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul','Expiry Date','Year', 'Remarks'
-        ];
-        const data = medicines.map(e => [
-            e.name,
-            e.august,
-            e.september,
-            e.october,
-            e.november,
-            e.december,
-            e.january,
-            e.february,
-            e.march,
-            e.april,
-            e.may,
-            e.june,
-            e.july,
-            e.expiry_date,
-            e.year,
-            e.remarks
-        ]);
+  const handleAddChange = (e) => {
+    const { name, value } = e.target;
+    setNewMedicine((prev) => ({ ...prev, [name]: value }));
+  };
 
-        exportToPDF('Medicine Inventory', columns, data, 'medicine-inventory.pdf');
-    };
-    const removeRow = async (index) => {
-        const medicineToDelete = medicines[index];
-        const updated = medicines.filter((_, idx) => idx !== index);
-        setMedicines(updated);
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setSelectedMedicine((prev) => ({ ...prev, [name]: value }));
+  };
 
-        if (medicineToDelete.id) {
-            try {
-                await axios.put(`${import.meta.env.VITE_REMOVE_MEDICINE_ROW}`, { id: medicineToDelete.id });
-                console.log('Deleted from DB successfully');
-            } catch (error) {
-                console.error('Error deleting row:', error);
-            }
-        }
-    };
+  const handleAddSubmit = async (medicine) => {
+    try {
+      const response = await axios.post(`${import.meta.env.VITE_CREATE_INVENTORY_ITEM}`, medicine);
+      if (response.data.success) {
+        setCurrentPage(currentPage);
+        setShowAddModal(false);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
-    return (
-        <Container fluid className="mt-4">
-            <Card className="shadow-sm ">
-                <Card.Header className='d-flex justify-content-between'>
-                    <h4 className="mb-3 fw-bold text-success">Medicine Inventory</h4>
+  const handleEditSubmit = async (medicine) => {
+    try {
+      const response = await axios.put(`${import.meta.env.VITE_UPDATE_INVENTORY_ITEM}/${medicine.id}`, medicine);
+      if (response.data.success) {
+        setCurrentPage(currentPage);
+        setShowEditModal(false);
+      } else {
+        console.log(response.data.message);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
-                    <div className="text-end">
-                        <Button variant="success" onClick={addNewRow}>
-                            + Add Medicine
-                        </Button>
-                        < Button variant="primary" className="ms-1" onClick={handleDownloadPDF}>
-                            Download PDF
-                        </Button>
-                    </div>
-                </Card.Header>
+  const handleEdit = (medicine) => {
+    setSelectedMedicine(medicine);
+    setShowEditModal(true);
+  };
 
-                <Card.Body>
-                    <div className="table-responsive">
-                        <Table bordered striped hover size="sm" className="excel-like-table">
-                            <thead className="table-light text-center align-middle">
-                                <tr>
-                                    <th>MEDICINE</th>
-                                    <th>Aug</th>
-                                    <th>Sep</th>
-                                    <th>Oct</th>
-                                    <th>Nov</th>
-                                    <th>Dec</th>
-                                    <th>Jan</th>
-                                    <th>Feb</th>
-                                    <th>Mar</th>
-                                    <th>Apr</th>
-                                    <th>May</th>
-                                    <th>Jun</th>
-                                    <th>Jul</th>
-                                    <th>Expiry Date</th>
-                                    <th>Year</th>
-                                    <th>Remarks</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {medicines.map((medicine, idx) => (
-                                    <tr key={idx}>
-                                        <td style={{ minWidth: '250px' }}>
-                                            <Form.Control
-                                                type="text"
-                                                size="sm"
-                                                className="no-border text-start"
-                                                value={medicine.name}
-                                                onChange={(e) => handleInputChange(idx, 'name', e.target.value)}
-                                            />
-                                        </td>
+  const handleSave = (updatedMedicine) => {
+    setMedicines(medicines.map(item => item.id === updatedMedicine.id ? updatedMedicine : item));
+    setShowEditModal(false);
+    setSelectedMedicine(null);
+  };
 
-                                        {[
-                                            'january', 'february', 'march', 'april', 'may', 'june',
-                                            'july', 'august', 'september', 'october', 'november', 'december'
-                                        ].map((month) => (
-                                            <td key={month}>
-                                                <Form.Control
-                                                    type="text"
-                                                    size="sm"
-                                                    className="no-border text-center fw-bold"
-                                                    value={medicine[month]}
-                                                    onChange={(e) => handleInputChange(idx, month, parseInt(e.target.value) || 0)}
-                                                />
-                                            </td>
-                                        ))}
+  const handleDelete = (id) => {
+    setMedicines(medicines.filter(item => item.id !== id));
+  };
 
-                                        <td>
-                                            <Form.Control
-                                                type="date"
-                                                value={medicine.expiry_date}
-                                                onChange={(e) => handleInputChange(idx, 'expiry_date', e.target.value)}
-                                            />
-                                        </td>
+  const handlePageSizeChange = (e) => {
+    setItemsPerPage(Number(e.target.value));
+    setCurrentPage(1);
+  };
 
-                                        <td>
-                                            <Form.Control
-                                                type="number"
-                                                size="sm"
-                                                className="no-border text-center"
-                                                value={medicine.year}
-                                                onChange={(e) => handleInputChange(idx, 'year', parseInt(e.target.value) || new Date().getFullYear())}
-                                            />
-                                        </td>
+  return (
+    <Container className="p-0 y-0" fluid>
+      <Card className='p-1'>
+        <h1 className="mb-4 text-center">Medicine Inventory</h1>
 
-                                        <td>
-                                            <Form.Control
-                                                type="text"
-                                                size="sm"
-                                                className="no-border"
-                                                value={medicine.remarks}
-                                                onChange={(e) => handleInputChange(idx, 'remarks', e.target.value)}
-                                            />
-                                        </td>
+        <Row className="mb-3 p-3">
+          <Col md={6}>
+            <Form.Control
+              type="text"
+              placeholder="Search medicine name, serial number, or type..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </Col>
+          <Col md={3}>
+            <Form.Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <option value="All">All Statuses</option>
+              <option value="New">New</option>
+              <option value="Used">Used</option>
+              <option value="Expired">Expired</option>
+              <option value="Restocked">Restocked</option>
+            </Form.Select>
+          </Col>
+          <Col md={3} className="d-flex justify-content-end align-items-center">
+            <Button variant='dark' onClick={() => setShowAddModal(true)}>
+              <i className="bi bi-plus-circle me-2"></i> Add Medicine
+            </Button>
+          </Col>
+        </Row>
 
-                                        <td className="text-center">
-                                            <Button
-                                                variant="danger"
-                                                size="sm"
-                                                onClick={() => removeRow(idx)}
-                                            >
-                                                Delete
-                                            </Button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </Table>
-                    </div>
+        <Table striped bordered hover responsive className='mb-0'>
+          <thead className='table-dark'>
+            <tr>
+              <th>#ID</th>
+              <th>Serial Number</th>
+              <th>Medicine Name</th>
+              <th>Type</th>
+              <th>Quantity</th>
+              <th className='text-center'>Status</th>
+              <th className='text-center'>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan="7" className="text-center py-4">
+                  <Spinner animation="border" variant="primary" />
+                </td>
+              </tr>
+            ) : currentData.length > 0 ? (
+              currentData.map(item => (
+                <tr key={item.id}>
+                  <td>{item.id}</td>
+                  <td>{item.serial_number}</td>
+                  <td>
+                    <OverlayTrigger
+                      placement="top"
+                      overlay={<Tooltip>Ask about this medicine</Tooltip>}
+                    >
+                      <span
+                        style={{ cursor: 'pointer' }}
+                        onClick={() =>
+                          handleAskButton(
+                            `What is the use or instructions for this medicine: "${item.item_name}"${item.serial_number
+                              ? ` with serial number ${item.serial_number}`
+                              : ''
+                            }, type: ${item.category}, status: ${item.status}, quantity: ${item.quantity}?`
+                          )
+                        }
+                      >
+                        <TextTruncate text={item.item_name} maxLength={10} />
+                      </span>
+                    </OverlayTrigger>
+                  </td>
+                  <td>{item.category}</td>
+                  <td>{item.quantity}</td>
+                  <td className='text-center'>{item.status}</td>
+                  <td className="text-center">
+                    <Button variant="warning" size="sm" className="me-2 mb-1" onClick={() => handleEdit(item)}>
+                      <i className="bi bi-pencil"></i>
+                    </Button>
+                    <Button variant="danger" size="sm" className="me-2 mb-1" onClick={() => handleDelete(item.id)}>
+                      <i className="bi bi-trash"></i>
+                    </Button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="7" className="text-center">No records found.</td>
+              </tr>
+            )}
+          </tbody>
+        </Table>
 
-                </Card.Body>
-            </Card>
-            <style jsx="true">{`
-        input[type="number"]::-webkit-inner-spin-button,
-        input[type="number"]::-webkit-outer-spin-button {
-          -webkit-appearance: none;
-          margin: 0;
-        }
-        input[type="number"] {
-          -moz-appearance: textfield;
-        }
-        .excel-like-table td,
-        .excel-like-table th {
-          padding: 0.4rem;
-          vertical-align: middle;
-        }
-        .no-border {
-          border: none;
-          box-shadow: none;
-          background-color: transparent;
-          padding: 0;
-          text-align: center;
-        }
-        .no-border:focus {
-          background-color: #eef7ff;
-          border: 1px solid #86b7fe;
-          outline: none;
-        }
-      `}</style>
-        </Container>
-    );
+        <PaginationControls
+          filteredReports={filteredItems}
+          pageSize={itemsPerPage}
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+          handlePageSizeChange={handlePageSizeChange}
+        />
+      </Card>
+
+      <AddInventoryModal
+        show={showAddModal}
+        onHide={() => setShowAddModal(false)}
+        onSubmit={handleAddSubmit}
+        newItem={newMedicine}
+        handleChange={handleAddChange}
+      />
+
+      <EditInventoryModal
+        show={showEditModal}
+        onHide={() => setShowEditModal(false)}
+        onSave={handleEditSubmit}
+        item={selectedMedicine || newMedicine}
+        handleChange={handleEditChange}
+      />
+    </Container>
+  );
 }
 
 export default MedicineInventory;

@@ -1,226 +1,3 @@
-// const express = require('express');
-// const router = express.Router();
-// const db = require('../config/db');
-
-// // async function notifyAdminsAndStaff(title, message) {
-// //     try {
-// //         const notificationResult = await db.queryAsync(
-// //             'INSERT INTO notifications (title, message, created_at) VALUES (?, ?, NOW())',
-// //             [title, message]
-// //         );
-// //         const notificationId = notificationResult.insertId;
-
-// //         // Fetch Admins and Staff
-// //         const users = await db.queryAsync(
-// //             'SELECT id FROM users WHERE role IN (?, ?) AND status = 1',
-// //             ['admin', 'staff']
-// //         );
-
-// //         const receivers = users.map(user => [notificationId, user.id, 0, null]);
-// //         if (receivers.length > 0) {
-// //             await db.queryAsync(
-// //                 'INSERT INTO notification_receivers (notification_id, user_id, is_read, read_at) VALUES ?',
-// //                 [receivers]
-// //             );
-// //         }
-// //     } catch (err) {
-// //         console.error("Error sending notifications:", err);
-// //     }
-// // }
-
-
-// async function notifyAdminsStaffAndOwner(title, message, ownerId) {
-//     try {
-//         const notificationResult = await db.queryAsync(
-//             'INSERT INTO notifications (title, message, created_at) VALUES (?, ?, NOW())',
-//             [title, message]
-//         );
-//         const notificationId = notificationResult.insertId;
-
-//         // Fetch Admins and Staff
-//         const users = await db.queryAsync(
-//             'SELECT id FROM users WHERE role IN (?, ?) AND status = 1',
-//             ['admin', 'staff']
-//         );
-
-//         // Prepare receivers: admins, staff, and the owner
-//         const receivers = users.map(user => [notificationId, user.id, 0, null]);
-
-//         // Add owner if not already included
-//         if (ownerId) {
-//             // Ensure owner isn't duplicated (in case admin/staff books own appointment)
-//             const ownerAlreadyIncluded = users.some(user => user.id === ownerId);
-//             if (!ownerAlreadyIncluded) {
-//                 receivers.push([notificationId, ownerId, 0, null]);
-//             }
-//         }
-
-//         if (receivers.length > 0) {
-//             await db.queryAsync(
-//                 'INSERT INTO notification_receivers (notification_id, user_id, is_read, read_at) VALUES ?',
-//                 [receivers]
-//             );
-//         }
-
-//     } catch (err) {
-//         console.error("Error sending notifications:", err);
-//     }
-// }
-
-
-// router.get('/', async (req, res) => {
-//     try {
-//         const rows = await db.queryAsync(`SELECT a.*,s.student_id, a.complaint as chief_complaint ,s.full_name, s.email, s.birthdate, s.sex FROM appointments a JOIN students s ON a.user_id = s.user_id WHERE a.status = "pending" ORDER BY created_at DESC;`);
-//         return res.json(rows);
-//     } catch (err) {
-//         console.error("Error fetching all borrow records:", err);
-//         res.status(500).json([]);
-//     }
-// });
-
-// router.get('/student/:user_id', async (req, res) => {
-//     const {user_id} = req.params;
-//     try {
-//         const rows = await db.queryAsync(`SELECT a.*,s.student_id, a.complaint as chief_complaint ,s.full_name, s.email, s.birthdate, s.sex FROM appointments a JOIN students s ON a.user_id = s.user_id WHERE a.status = "pending" AND a.user_id = ? ORDER BY created_at DESC;`,[user_id]);
-//         return res.json(rows);
-//     } catch (err) {
-//         console.error("Error fetching all borrow records:", err);
-//         res.status(500).json([]);
-//     }
-// });
-// // Borrow Request (for users)
-// router.post('/post-appointment', async (req, res) => {
-//     const {
-//         user_id,
-//         complaint,
-//         time,
-//         date,
-//     } = req.body;
-//     console.log(req.body);
-
-//     if ( !complaint || !time || !date || !user_id ) {
-//         return res.status(400).json({ success: false, message: "Missing required fields" });
-//     }
-
-//     const query = `
-//         INSERT INTO appointments
-//         (user_id, complaint, time, date)
-//         VALUES (?, ? ,?, ?)
-//     `;
-//     const values = [user_id, complaint, time, date];
-
-//     try {
-//         const result = await db.queryAsync(query, values);
-//         await notifyAdminsAndStaff('New Appointment Scheduled', 'A new appointment has been booked.', user_id);
-//         req.io.emit("updateNotifications");
-//         res.json({
-//             success: true,
-//             message: 'Borrow record and notification created successfully',
-//         });
-
-//     } catch (err) {
-//         console.error("Error creating borrow record or notification:", err);
-//         res.status(500).json({ success: false, message: 'Failed to create borrow record or notification' });
-//     }
-// });
-
-// router.put('/update-appointment/:id', async (req, res) => {
-
-//     const { id } = req.params;
-//     const {
-//         complaint,
-//         time,
-//         date,
-//     } = req.body;
-//     console.log(req.body);
-
-//     if ( !complaint || !time || !date ||!id ) {
-//         return res.status(400).json({ success: false, message: "Missing required fields" });
-//     }
-
-//     const query = `
-//         UPDATE appointments SET complaint = ?, time = ?, date = ? WHERE id = ?
-//     `;
-//     const values = [complaint, time, date, id];
-
-//     try {
-//         const result = await db.queryAsync(query, values);
-//         await notifyAdminsAndStaff('Appointment Updated', 'An appointment has been updated.');
-//         req.io.emit("updateNotifications");
-//         res.json({
-//             success: true,
-//             message: ' record and notification created successfully',
-//         });
-
-//     } catch (err) {
-//         console.error("Error creating borrow record or notification:", err);
-//         res.status(500).json({ success: false, message: 'Failed to create borrow record or notification' });
-//     }
-// });
-
-// router.put('/cancel-appointment/:id', async (req, res) => {
-//     const { id } = req.params;
-
-
-//     if (!id ) {
-//         return res.status(400).json({ success: false, message: "Missing required fields" });
-//     }
-
-//     const query = `
-//         UPDATE appointments SET status = ? WHERE id = ?
-//     `;
-//     const values = ["canceled" ,id];
-
-//     try {
-//         const result = await db.queryAsync(query, values);
-//         await notifyAdminsAndStaff('Appointment Canceled', 'An appointment has been canceled.');
-//         req.io.emit("updateNotifications");
-//         res.json({
-//             success: true,
-//             message: ' record and notification created successfully',
-//         });
-
-//     } catch (err) {
-//         console.error("Error creating borrow record or notification:", err);
-//         res.status(500).json({ success: false, message: 'Failed to create borrow record or notification' });
-//     }
-// });
-
-// router.put('/mark-completed-appointment/:id', async (req, res) => {
-//     const { id } = req.params;
-
-
-//     if (!id ) {
-//         return res.status(400).json({ success: false, message: "Missing required fields" });
-//     }
-
-//     const query = `
-//         UPDATE appointments SET status = ? WHERE id = ?
-//     `;
-//     const values = ["completed" ,id];
-
-//     try {
-        
-//         const result = await db.queryAsync(query, values);
-//         await notifyAdminsAndStaff('Appointment Completed', 'An appointment has been completed.');
-
-//         req.io.emit("updateNotifications");
-//         res.json({
-//             success: true,
-//             message: ' record and notification created successfully',
-//         });
-
-//     } catch (err) {
-//         console.error("Error creating borrow record or notification:", err);
-//         res.status(500).json({ success: false, message: 'Failed to create borrow record or notification' });
-//     }
-// });
-
-
-// module.exports = router;
-
-
-
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
@@ -276,17 +53,14 @@ async function notifyAdminsStaffAndOwnerByAppointment(title, message, appointmen
     }
 }
 
-// 🩺 Routes
 
-// Get all pending appointments
 router.get('/', async (req, res) => {
     try {
         const rows = await db.queryAsync(`
-            SELECT a.*, s.student_id, a.complaint AS chief_complaint, s.full_name, s.email, s.birthdate, s.sex 
+            SELECT a.*, s.student_id, a.complaint AS chief_complaint,a.status, s.full_name, s.email, s.birthdate, s.sex 
             FROM appointments a 
             JOIN students s ON a.user_id = s.user_id 
-            WHERE a.status = "pending" 
-            ORDER BY created_at DESC
+            ORDER BY a.status ASC, time ASC
         `);
         return res.json(rows);
     } catch (err) {
@@ -313,7 +87,6 @@ router.get('/student/:user_id', async (req, res) => {
     }
 });
 
-// 📅 Post new appointment
 router.post('/post-appointment', async (req, res) => {
     const { user_id, complaint, time, date } = req.body;
 
@@ -322,13 +95,26 @@ router.post('/post-appointment', async (req, res) => {
     }
 
     try {
+        // Insert appointment first
         await db.queryAsync(`
             INSERT INTO appointments (user_id, complaint, time, date) VALUES (?, ?, ?, ?)
         `, [user_id, complaint, time, date]);
 
+        const [availabilityExists] = await db.queryAsync(`
+            SELECT * FROM availability WHERE date = ? AND time_slot = ?
+        `, [date, time]);
+
+        if (availabilityExists.length === 0) {
+            await db.queryAsync(`
+                INSERT INTO availability (date, time_slot, is_available)
+                VALUES (?, ?, 1)
+            `, [date, time]);
+        }
+
         await notifyAdminsStaffAndOwner('New Appointment Scheduled', 'A new appointment has been booked.', user_id);
 
         req.io.emit("updateNotifications");
+
         res.json({ success: true, message: 'Appointment and notification created successfully' });
 
     } catch (err) {
@@ -337,7 +123,7 @@ router.post('/post-appointment', async (req, res) => {
     }
 });
 
-// 🛠 Update an appointment
+
 router.put('/update-appointment/:id', async (req, res) => {
     const { id } = req.params;
     const { complaint, time, date } = req.body;
@@ -347,22 +133,89 @@ router.put('/update-appointment/:id', async (req, res) => {
     }
 
     try {
+        // Update appointment details
         await db.queryAsync(`
-            UPDATE appointments SET complaint = ?, time = ?, date = ? WHERE id = ?
-        `, [complaint, time, date, id]);
+            UPDATE appointments SET time = ?, date = ?, status = 'pending' WHERE id = ?
+        `, [time, date, id]);
 
+        
+        // Check if the time-slot availability exists, if not insert it
+        const availabilityExists = await db.queryAsync(`
+            SELECT * FROM availability WHERE date = ? AND time_slot = ?
+        `, [date, time]);
+
+        if (availabilityExists.length === 0) {
+            // Insert availability if it does not exist
+            await db.queryAsync(`
+                INSERT INTO availability (date, time_slot)
+                VALUES (?, ?)
+            `, [date, time]);
+        }
+
+        // Notify staff and owners about the updated appointment
         await notifyAdminsStaffAndOwnerByAppointment('Appointment Updated', 'An appointment has been updated.', id);
 
+        // Emit update for notifications
         req.io.emit("updateNotifications");
+
         res.json({ success: true, message: 'Appointment and notification updated successfully' });
 
     } catch (err) {
+        req.io.emit("updateNotifications");
         console.error("Error updating appointment:", err);
         res.status(500).json({ success: false, message: 'Failed to update appointment' });
     }
 });
 
-// ❌ Cancel an appointment
+
+// router.post('/post-appointment', async (req, res) => {
+//     const { user_id, complaint, time, date } = req.body;
+
+//     if (!complaint || !time || !date || !user_id) {
+//         return res.status(400).json({ success: false, message: "Missing required fields" });
+//     }
+
+//     try {
+//         await db.queryAsync(`
+//             INSERT INTO appointments (user_id, complaint, time, date) VALUES (?, ?, ?, ?)
+//         `, [user_id, complaint, time, date]);
+
+//         await notifyAdminsStaffAndOwner('New Appointment Scheduled', 'A new appointment has been booked.', user_id);
+
+//         req.io.emit("updateNotifications");
+//         res.json({ success: true, message: 'Appointment and notification created successfully' });
+
+//     } catch (err) {
+//         console.error("Error posting appointment:", err);
+//         res.status(500).json({ success: false, message: 'Failed to create appointment' });
+//     }
+// });
+
+// // 🛠 Update an appointment
+// router.put('/update-appointment/:id', async (req, res) => {
+//     const { id } = req.params;
+//     const { complaint, time, date } = req.body;
+
+//     if (!complaint || !time || !date || !id) {
+//         return res.status(400).json({ success: false, message: "Missing required fields" });
+//     }
+
+//     try {
+//         await db.queryAsync(`
+//             UPDATE appointments SET complaint = ?, time = ?, date = ? WHERE id = ?
+//         `, [complaint, time, date, id]);
+
+//         await notifyAdminsStaffAndOwnerByAppointment('Appointment Updated', 'An appointment has been updated.', id);
+
+//         req.io.emit("updateNotifications");
+//         res.json({ success: true, message: 'Appointment and notification updated successfully' });
+
+//     } catch (err) {
+//         console.error("Error updating appointment:", err);
+//         res.status(500).json({ success: false, message: 'Failed to update appointment' });
+//     }
+// });
+
 router.put('/cancel-appointment/:id', async (req, res) => {
     const { id } = req.params;
 
@@ -386,7 +239,6 @@ router.put('/cancel-appointment/:id', async (req, res) => {
     }
 });
 
-// ✅ Mark an appointment as completed
 router.put('/mark-completed-appointment/:id', async (req, res) => {
     const { id } = req.params;
 
@@ -409,5 +261,181 @@ router.put('/mark-completed-appointment/:id', async (req, res) => {
         res.status(500).json({ success: false, message: 'Failed to complete appointment' });
     }
 });
+
+
+router.post('/availability', async (req, res) => {
+    const { date, time_slot, is_available, appointment_id } = req.body;
+
+
+    try {
+        const updateAvailabilityQuery = `
+            INSERT INTO availability (date, time_slot, is_available)
+            VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE is_available = ?
+        `;
+        await db.queryAsync(updateAvailabilityQuery, [date, time_slot, is_available, is_available]);
+
+        // Cancel appointment if the time is made unavailable
+        if (parseInt(is_available) === 0) {
+            const cancelAppointmentQuery = `
+                UPDATE appointments
+                SET status = 'canceled'
+                WHERE id = ? AND status != 'canceled'
+            `;
+            const cancelResult = await db.queryAsync(cancelAppointmentQuery, [appointment_id]);
+
+            if (cancelResult.affectedRows > 0) {
+                console.log(`Canceled ${cancelResult.affectedRows} appointment(s) on ${date} at ${time_slot}`);
+                req.io.emit("appointmentCanceled", { date, time_slot });
+            }
+        }
+
+        req.io.emit("updateNotifications");
+        res.status(200).send({ message: 'Availability updated successfully' });
+    } catch (error) {
+        console.error('Error saving availability:', error);
+        res.status(500).send({ error: 'Error saving availability' });
+    }
+});
+
+
+// Route to save availability
+// router.post('/availability', async (req, res) => {
+//     const { date, time_slot, is_available } = req.body;
+//     console.log(req.body);
+//     try {
+//         const query = `INSERT INTO availability (date, time_slot, is_available)
+//                         VALUES (?, ?, ?)
+//                         ON DUPLICATE KEY UPDATE is_available = ?`;
+//         await db.queryAsync(query, [date, time_slot, is_available, is_available]);
+//         req.io.emit("updateNotifications");
+//         res.status(200).send({ message: 'Availability updated successfully' });
+//     } catch (error) {
+//         res.status(500).send({ error: 'Error saving availability' });
+//     }
+// });
+
+// Route to get availability for a specific date
+router.get('/availability-time-ii', async (req, res) => {
+    const { date } = req.query;
+
+    if (!date) {
+        return res.status(400).send({ error: 'Date is required' });
+    }
+
+    try {
+        const query = `
+            SELECT *
+            FROM availability
+            WHERE date = ?;
+        `;
+
+        const results = await db.queryAsync(query, [date]);
+
+        if (results.length === 0) {
+            return res.status(200).send({ availability: [] });
+        }
+
+        // Send the availability data back
+        res.status(200).send({ availability: results });
+    } catch (error) {
+        console.error('Error fetching availability:', error); // Log the error for debugging
+        res.status(500).send({ error: 'Error fetching availability' });
+    }
+});
+
+// Route to get availability for a specific date
+router.get('/availability-time', async (req, res) => {
+    const { date } = req.query;
+
+    if (!date) {
+        return res.status(400).send({ error: 'Date is required' });
+    }
+
+    try {
+        const query = `
+            SELECT time_slot, is_available
+            FROM availability
+            WHERE date = ? AND is_available = 1;
+        `;
+
+        const results = await db.queryAsync(query, [date]);
+
+        if (results.length === 0) {
+            return res.status(200).send({ availability: [] });
+        }
+
+        // Send the availability data back
+        res.status(200).send({ availability: results });
+    } catch (error) {
+        console.error('Error fetching availability:', error); // Log the error for debugging
+        res.status(500).send({ error: 'Error fetching availability' });
+    }
+});
+
+router.get('/availability-ii', async (req, res) => {
+
+    try {
+        const query = `
+            SELECT *
+            FROM availability
+        `;
+
+        const results = await db.queryAsync(query);
+
+        if (results.length === 0) {
+            return res.status(200).send({ availability: [] });
+        }
+        res.status(200).send({ availability: results });
+    } catch (error) {
+        console.error('Error fetching availability:', error); // Log the error for debugging
+        res.status(500).send({ error: 'Error fetching availability' });
+    }
+});
+
+router.get('/availability', async (req, res) => {
+
+    try {
+        const query = `
+            SELECT date 
+            FROM availability WHERE is_available = 1 GROUP BY date
+        `;
+
+        const results = await db.queryAsync(query);
+
+        if (results.length === 0) {
+            return res.status(200).send({ availability: [] });
+        }
+        return res.json(results);
+    } catch (error) {
+        console.error('Error fetching availability:', error); // Log the error for debugging
+        res.status(500).send({ error: 'Error fetching availability' });
+    }
+});
+
+// Route to get all appointments for a specific date
+router.get('/appointments/by-date', async (req, res) => {
+    const { date } = req.query;
+
+    if (!date) {
+        return res.status(400).send({ error: 'Date is required' });
+    }
+
+    try {
+        const query = `
+            SELECT id, user_id, date, time
+            FROM appointments
+            WHERE date = ?
+        `;
+
+        const results = await db.queryAsync(query, [date]);
+
+        return res.status(200).send(results);
+    } catch (error) {
+        console.error('Error fetching appointments:', error);
+        res.status(500).send({ error: 'Error fetching appointments' });
+    }
+});
+
 
 module.exports = router;

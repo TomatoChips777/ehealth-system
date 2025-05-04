@@ -183,12 +183,14 @@ function AnnualPhysicalExamForm() {
         // If data already exists, send PUT request to update
         console.log(existingExamData);
         const response = await axios.put(`${import.meta.env.VITE_UPDATE_ANNUAL_PHYSICAL_EXAM}/${existingExamData.id}`, requestData);
+        navigate('/patient-details');
         alert("Annual Physical Exam updated successfully.");
         fetchExamData();
       } else {
         // If no data exists, send POST request to create
         const response = await axios.post(`${import.meta.env.VITE_ANNUAL_PHYSICAL_EXAM}`, requestData);
         alert("Annual Physical Exam added successfully.");
+        navigate('/patient-details');
         fetchExamData();
       }
 
@@ -198,6 +200,9 @@ function AnnualPhysicalExamForm() {
     }
   };
 
+  const goBack = ()=>{
+    navigate('/patient-details');
+  }
   return (
     <Container>
       <Card>
@@ -285,14 +290,20 @@ function AnnualPhysicalExamForm() {
                 <Form.Control as="textarea" rows={2} name="recommendation" value={formData.recommendation} onChange={handleChange} />
               </Form.Group>
 
-              <div className="d-flex justify-content-end">
-                <Button type="submit" variant="primary">
+              <div className="d-flex justify-content-between">
+              <Button variant='secondary' size='sm' onClick={() => goBack()}>Go Back</Button>
+                
+                <Button type="submit" size='sm' variant="primary">
                   {existingExamData ? 'Update' : 'Submit Form'}
                 </Button>
+
               </div>
+           
             </Form>
           )}
+          
         </Card.Body>
+        
       </Card>
     </Container>
   );

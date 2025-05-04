@@ -70,7 +70,6 @@ router.post('/login', async (req, res) => {
                 await db.queryAsync(updateQuery, params);
             }
 
-            req.io.emit("updateUser");
             return res.json(user);
         }
     } catch (err) {
@@ -105,7 +104,7 @@ router.post('/get-current-user', async (req, res) => {
 });
 
 router.get('/get-all-users', async (req, res) => {
-    const query = `SELECT s.*, u.name, u.status, u.password, u.role, u.username FROM students s JOIN users u on u.id = s.user_id`;
+    const query = `SELECT s.*, u.name, u.status, u.password, u.role, u.username FROM students s JOIN users u on u.id = s.user_id ORDER BY u.id DESC`;
 
     try {
         const rows = await db.queryAsync(query);
@@ -115,32 +114,23 @@ router.get('/get-all-users', async (req, res) => {
         res.status(500).json({ success: false, message: 'Error fetching data' });
     }
 });
-// router.get('/get-all-users', async (req, res) => {
-//     try {
-//         const rows = await db.queryAsync('SELECT * FROM users');
-//         return res.json(rows);
-//     } catch (err) {
-//         console.error('Get all users error:', err);
-//         res.status(500).json({ error: 'Internal server error' });
-//     }
-// });
-
 
 router.put('/activate-deactivate-user/:userId', async (req, res) => {
     const { userId } = req.params;
     const { status } = req.body;
-
     if (status !== 0 && status !== 1) {
         return res.status(400).json({ success: false, message: 'Invalid status value. Use 1 or 0.' });
     }
 
     try {
+
         const result = await db.queryAsync('UPDATE users SET status = ? WHERE id = ?', [status, userId]);
 
         if (result.affectedRows === 0) {
+
             return res.status(404).json({ success: false, message: 'User not found' });
         }
-        req.io.emit("updateUser");
+        req.io.emit("changeUserRole");
         res.json({ success: true, message: `User status updated to ${status === 1 ? 'active' : 'inactive'}` });
     } catch (err) {
         console.error('Activate/Deactivate error:', err);
@@ -150,14 +140,15 @@ router.put('/activate-deactivate-user/:userId', async (req, res) => {
 
 
 router.post('/manual-signin', async (req, res) => {
-    const { email, password, name, picture } = req.body;
-    console.log(req.body);
+    const { email, password } = req.body;
+
     if (!email || !password) {
         return res.status(400).json({ error: 'Email and password are required' });
     }
 
     try {
-        const rows = await db.queryAsync('SELECT id, name, email, role, image_url, password FROM users WHERE email = ? AND status = 1', [email]);
+        // Query without status condition
+        const rows = await db.queryAsync('SELECT id, name, email, role, image_url, password, status FROM users WHERE email = ?', [email]);
 
         if (rows.length === 0) {
             return res.status(401).json({ error: 'User not found' });
@@ -165,15 +156,18 @@ router.post('/manual-signin', async (req, res) => {
 
         const user = rows[0];
 
+        // If status is 0, account is pending approval
+        if (user.status === 0) {
+            return res.status(403).json({ error: 'Please wait for the admin, nurse, or physician to accept your login.' });
+        }
+
         // Check if password matches
         const isMatch = await bcrypt.compare(password, user.password);
-
         if (!isMatch) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
-        req.io.emit("updateUser");
 
-        // If password is correct, send user info
+        // Success
         return res.json({
             id: user.id,
             name: user.name,
@@ -186,6 +180,43 @@ router.post('/manual-signin', async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+// router.post('/manual-signin', async (req, res) => {
+//     const { email, password, name, picture } = req.body;
+//     console.log(req.body);
+//     if (!email || !password) {
+//         return res.status(400).json({ error: 'Email and password are required' });
+//     }
+
+//     try {
+//         const rows = await db.queryAsync('SELECT id, name, email, role, image_url, password FROM users WHERE email = ? AND status = 1', [email]);
+
+//         if (rows.length === 0) {
+//             return res.status(401).json({ error: 'User not found' });
+//         }
+
+//         const user = rows[0];
+
+//         // Check if password matches
+//         const isMatch = await bcrypt.compare(password, user.password);
+
+//         if (!isMatch) {
+//             return res.status(401).json({ error: 'Invalid credentials' });
+//         }
+
+//         // If password is correct, send user info
+//         return res.json({
+//             id: user.id,
+//             name: user.name,
+//             email: user.email,
+//             role: user.role,
+//             image_url: user.image_url,
+//         });
+//     } catch (err) {
+//         console.error('Login error:', err);
+//         res.status(500).json({ error: 'Internal server error' });
+//     }
+// });
 
 
 router.post('/add-user', async (req, res) => {
@@ -235,6 +266,7 @@ router.put('/update-user/:userId', async (req, res) => {
 
     try {
         // If password is provided, hash it
+        
         let hashedPassword = null;
         if (password) {
             hashedPassword = await bcrypt.hash(password, 10);
